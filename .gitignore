@@ -1,0 +1,4 @@
+data
+backend/venv
+.idea
+*.pyc

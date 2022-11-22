@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  db:
+    container_name: postgres
+    image: postgres:14
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  web:
+    container_name: backend
+    build:
+      context: backend
+    command: python ./backend/manage.py runserver 0.0.0.0:${INT_PORT}
+    volumes:
+      - .:/code
+    ports:
+      - "${EXT_PORT}:${INT_PORT}"
+    environment:
+      - POSTGRES_NAME=${POSTGRES_NAME}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE}
+    depends_on:
+      - db
