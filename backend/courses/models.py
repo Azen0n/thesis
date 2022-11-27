@@ -57,7 +57,6 @@ class Problem(models.Model):
         MULTIPLE_CHOICE_CHECKBOX = 'Multiple Choice Checkbox'
         FILL_IN_SINGLE_BLANK = 'Fill In Single Blank'
         FILL_IN_MULTIPLE_BLANKS = 'Fill In Multiple Blanks'
-        ESSAY = 'Essay'
 
     class Difficulty(models.IntegerChoices):
         """Problem Difficulty."""
