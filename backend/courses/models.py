@@ -89,3 +89,6 @@ class Hint(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     text = models.TextField()
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.text
