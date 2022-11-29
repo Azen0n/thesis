@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ semester.course.title }}</title>
+</head>
+<body>
+<div>
+    <h3>{{ semester.course.title }}</h3>
+    <span style="margin-right: 20px">{{ semester.course.duration }} ч</span>
+    <span title="{{ semester.started_at|date:"d.m.Y G:i:s" }}">{{ semester.started_at|date:"j b" }}</span> –
+    <span title="{{ semester.ended_at|date:"d.m.Y G:i:s" }}">{{ semester.ended_at|date:"j b Y" }}</span>
+    <p><b>Описание</b><br>{{ semester.course.description }}</p>
+    <button>Записаться</button>
+    <p>Модули</p>
+    <ol>
+        {% for module in semester.course.module_set.all %}
+            <li>
+                <div>
+                    <span title="Обязательный">{% if module.is_required %}*{% endif %}</span>
+                    <span>{{ module.title }}</span>
+                    <p><b>Описание</b><br>{{ module.description }}</p>
+                    <span style="margin-right: 10px">{{ module.topic_set.count }} тем</span>
+                    <span style="margin-right: 10px">{{ module.problem_count }} практических заданий</span>
+                    <span>{{ module.total_time }} ч</span>
+                    <p><b>Темы</b></p>
+                    <table>
+                        {% for topic in module.topic_set.all %}
+                            <tr>
+                                <td>{{ forloop.counter }}. <span title="Обязательный">{% if module.is_required %}
+                                    *{% endif %}</span></td>
+                                <td style="padding-right: 20px"><a
+                                        href="{% url 'topic' topic.pk %}">{{ topic.title }}</a></td>
+                                <td style="padding-right: 20px" title="Время на завершение">
+                                    {{ topic.time_to_complete }} ч
+                                </td>
+                                <td title="Количество заданий">{{ topic.problem_set.count }}</td>
+                            <tr>
+                        {% empty %}
+                            <p>Нет тем</p>
+                        {% endfor %}
+                    </table>
+                </div>
+            </li>
+        {% empty %}
+            <p>Нет модулей</p>
+        {% endfor %}
+    </ol>
+</div>
+</body>
+</html>

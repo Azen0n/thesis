@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Активные курсы</title>
+</head>
+<body>
+<h2>Активные курсы</h2>
+<ul>
+    {% for semester in semesters %}
+        <li>
+            <div>
+                <h3>
+                    <a href="{% url 'semester' semester.pk %}">
+                        {{ semester.course.title }}
+                        <span title="{{ semester.started_at|date:"d.m.Y G:i:s" }}">
+                        ({{semester.started_at|date:"j b"}}
+                        </span>
+                        –
+                        <span title="{{ semester.ended_at|date:"d.m.Y G:i:s" }}">
+                        {{semester.ended_at|date:"j b Y"}})
+                        </span>
+                    </a>
+                </h3>
+            </div>
+        </li>
+    {% endfor %}
+</ul>
+</body>
+</html>

@@ -1,6 +1,8 @@
 import uuid
 
 from django.db import models
+from django.db.models import Sum
+from django.utils.translation import gettext_lazy as _
 
 
 class Course(models.Model):
@@ -15,6 +17,17 @@ class Course(models.Model):
         return self.title
 
 
+class Semester(models.Model):
+    """Semester model."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    started_at = models.DateTimeField()
+    ended_at = models.DateTimeField()
+
+    def __str__(self):
+        return f'{self.course}, {self.started_at.strftime("%m.%Y")} - {self.ended_at.strftime("%m.%Y")}'
+
+
 class Module(models.Model):
     """Course Module model."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -25,6 +38,14 @@ class Module(models.Model):
 
     def __str__(self):
         return self.title
+
+    @property
+    def problem_count(self):
+        return Problem.objects.filter(topic__module=self.pk).count()
+
+    @property
+    def total_time(self):
+        return Topic.objects.filter(module=self.pk).aggregate(Sum('time_to_complete'))['time_to_complete__sum']
 
 
 class Topic(models.Model):
@@ -37,6 +58,10 @@ class Topic(models.Model):
 
     def __str__(self):
         return self.title
+
+    @property
+    def next(self):
+        return Topic.objects.filter()
 
 
 class Attachment(models.Model):
@@ -55,16 +80,16 @@ class Problem(models.Model):
 
     class Type(models.TextChoices):
         """Each Problem type has a separate table."""
-        MULTIPLE_CHOICE_RADIO = 'Multiple Choice Radio'
-        MULTIPLE_CHOICE_CHECKBOX = 'Multiple Choice Checkbox'
-        FILL_IN_SINGLE_BLANK = 'Fill In Single Blank'
-        FILL_IN_MULTIPLE_BLANKS = 'Fill In Multiple Blanks'
+        MULTIPLE_CHOICE_RADIO = 'Multiple Choice Radio', _('Выбор одного варианта')
+        MULTIPLE_CHOICE_CHECKBOX = 'Multiple Choice Checkbox', _('Выбор нескольких вариантов')
+        FILL_IN_SINGLE_BLANK = 'Fill In Single Blank', _('Заполнение пропуска')
+        FILL_IN_MULTIPLE_BLANKS = 'Fill In Multiple Blanks', _('Заполнение нескольких пропусков')
 
     class Difficulty(models.IntegerChoices):
         """Problem Difficulty."""
-        EASY = 1
-        NORMAL = 2
-        HARD = 3
+        EASY = 1, _('Легкое')
+        NORMAL = 2, _('Нормальное')
+        HARD = 3, _('Сложное')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.TextField()
