@@ -13,10 +13,10 @@ services:
   web:
     container_name: backend
     build:
-      context: backend
-    command: python ./backend/manage.py runserver 0.0.0.0:${INT_PORT}
+      context: ./backend
+    command: python manage.py runserver 0.0.0.0:${INT_PORT}
     volumes:
-      - .:/code
+      - ./backend:/code
     ports:
       - "${EXT_PORT}:${INT_PORT}"
     environment:
