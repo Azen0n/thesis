@@ -9,7 +9,7 @@ class Course(models.Model):
     title = models.TextField()
     description = models.TextField()
     duration = models.IntegerField()
-    thumbnail = models.FileField(upload_to='thumbnails/')
+    thumbnail = models.FileField(upload_to='thumbnails/', blank=True, null=True)
 
     def __str__(self):
         return self.title
@@ -41,11 +41,13 @@ class Topic(models.Model):
 
 class Attachment(models.Model):
     """Topic Attachment model."""
-    url = models.TextField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    url = models.TextField()
     topic = models.ForeignKey(Topic, on_delete=models.CASCADE)
 
     def __str__(self):
-        return self.url
+        return self.name
 
 
 class Problem(models.Model):

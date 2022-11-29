@@ -72,7 +72,7 @@ class FillInMultipleBlanks(models.Model):
         return self.text
 
 
-class FillInMultipleBlankOption(models.Model):
+class FillInMultipleBlanksOption(models.Model):
     """Option for Fill In Multiple Blank Type."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     answer = models.ForeignKey(FillInMultipleBlanks, on_delete=models.CASCADE)
