@@ -83,7 +83,6 @@ class Problem(models.Model):
         MULTIPLE_CHOICE_RADIO = 'Multiple Choice Radio', _('Выбор одного варианта')
         MULTIPLE_CHOICE_CHECKBOX = 'Multiple Choice Checkbox', _('Выбор нескольких вариантов')
         FILL_IN_SINGLE_BLANK = 'Fill In Single Blank', _('Заполнение пропуска')
-        FILL_IN_MULTIPLE_BLANKS = 'Fill In Multiple Blanks', _('Заполнение нескольких пропусков')
 
     class Difficulty(models.IntegerChoices):
         """Problem Difficulty."""
