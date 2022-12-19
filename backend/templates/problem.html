@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ problem.title }}</title>
+    {% load static %}
+    <script type="text/javascript" src="{% static 'js/problem.js' %}"></script>
+</head>
+<body>
+<h4>Тема: <a href="{% url 'topic' problem.topic.pk %}">{{ problem.topic.title }}</a></h4>
+<div id="problem">
+    <h3>{{ problem.title }}</h3>
+    <p>{{ problem.description }}</p>
+    <form action="">
+        <div id="answer" data-answer="{{ answer }}"></div>
+        <button type="submit">Отправить</button>
+    </form>
+</div>
+</body>
+</html>

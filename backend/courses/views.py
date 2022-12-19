@@ -1,6 +1,12 @@
+import json
+from uuid import UUID
+
+from django.http import HttpRequest
+from django.shortcuts import render
+from django.views import View
 from django.views.generic import ListView, DetailView
 
-from .models import Semester, Topic
+from .models import Semester, Topic, Problem
 
 
 class SemesterListView(ListView):
@@ -19,3 +25,46 @@ class TopicDetailView(DetailView):
     model = Topic
     template_name = 'topic.html'
     context_object_name = 'topic'
+
+
+class ProblemDetailView(DetailView):
+    model = Problem
+    template_name = 'problem.html'
+    context_object_name = 'problem'
+
+
+class ProblemView(View):
+
+    def get(self, request: HttpRequest, pk: UUID):
+        problem = Problem.objects.get(pk=pk)
+
+        match problem.type:
+            case 'Multiple Choice Radio':
+                answer = {
+                    'type': 'Multiple Choice Radio',
+                    'options': [{'id': str(option.id),
+                                 'text': option.text} for option in
+                                problem.multiplechoiceradio_set.all()]
+                }
+            case 'Multiple Choice Checkbox':
+                answer = {
+                    'type': 'Multiple Choice Checkbox',
+                    'options': [{'id': str(option.id),
+                                 'text': option.text} for option in
+                                problem.multiplechoicecheckbox_set.all()]
+                }
+            case 'Fill In Single Blank':
+                option = problem.fillinsingleblank_set.all()[0]
+                answer = {
+                    'type': 'Fill In Single Blank',
+                    'options': {'id': str(option.id),
+                                'text': option.text}
+                }
+            case _:
+                answer = {}
+
+        context = {
+            'problem': problem,
+            'answer': json.dumps(answer),
+        }
+        return render(request, 'problem.html', context)
