@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{% endblock %}</title>
+    {% block head_scripts %}{% endblock %}
+</head>
+<body>
+<div>
+    <span>Адаптивная обучающая система™</span>
+    <a href="{% url 'semesters' %}">Семестры</a>
+    <span>
+        {% if user.is_authenticated %}
+            {{ user.username }} (<a href="{% url 'logout' %}">Выйти</a>)
+        {% else %}
+            <a href="{% url 'login' %}">Войти</a>
+        {% endif %}
+    </span>
+
+</div>
+{% block content %}
+{% endblock %}
+</body>
+</html>
