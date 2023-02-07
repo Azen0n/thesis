@@ -2,11 +2,11 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 
-from courses.models import Topic, Problem, Difficulty
+from courses.models import Topic, Problem, Difficulty, Semester
 
 
 class AbstractProgress(models.Model):
-    points = models.FloatField()
+    points = models.FloatField(default=0)
     topic = models.ForeignKey(Topic, on_delete=models.CASCADE)
 
     class Meta:
@@ -36,6 +36,9 @@ class AbstractProgress(models.Model):
 
     def is_completed(self) -> bool:
         return self.points >= self.max
+
+    def __str__(self):
+        return f'{self.topic.title} ({self.points:.2f})'
 
 
 class TheoryProgress(AbstractProgress):
@@ -69,7 +72,7 @@ class Progress(models.Model):
         TRUE = 'True', _('Weakest Link done')
         NONE = 'None', _('Weakest Link not started')
 
-    user_data = models.ForeignKey('UserData', on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     topic = models.ForeignKey(Topic, on_delete=models.CASCADE)
     theory = models.ForeignKey(TheoryProgress, on_delete=models.CASCADE)
     practice = models.ForeignKey(PracticeProgress, on_delete=models.CASCADE)
@@ -109,13 +112,23 @@ class Progress(models.Model):
             return Difficulty.NORMAL
         return Difficulty.EASY
 
-
-class UserData(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    def __str__(self):
+        return (f'{self.user.username} - {self.topic.title}'
+                f' ({self.theory.points:.2f} / {self.practice.points:.2f}'
+                f' / {self.theory.points + self.practice.points:.2f})')
 
 
 class UserAnswer(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
     is_solved = models.BooleanField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class UserCurrentTopic(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    semester = models.ForeignKey(Semester, on_delete=models.CASCADE)
+    current_topic = models.ForeignKey(Progress, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = (('user', 'semester'),)

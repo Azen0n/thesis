@@ -1,5 +1,7 @@
+from __future__ import annotations
 import uuid
 
+from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
@@ -42,6 +44,8 @@ class Semester(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField()
+    students = models.ManyToManyField(User, related_name='semester_student_set')
+    teachers = models.ManyToManyField(User, related_name='semester_teacher_set')
 
     def __str__(self):
         return f'{self.course}, {self.started_at.strftime("%m.%Y")} - {self.ended_at.strftime("%m.%Y")}'
@@ -101,15 +105,15 @@ class Difficulty(models.IntegerChoices):
     HARD = 3, _('Сложное')
 
 
+class Type(models.TextChoices):
+    """Each Problem type has a separate table."""
+    MULTIPLE_CHOICE_RADIO = 'Multiple Choice Radio', _('Выбор одного варианта')
+    MULTIPLE_CHOICE_CHECKBOX = 'Multiple Choice Checkbox', _('Выбор нескольких вариантов')
+    FILL_IN_SINGLE_BLANK = 'Fill In Single Blank', _('Заполнение пропуска')
+
+
 class Problem(models.Model):
     """Topic Problem model."""
-
-    class Type(models.TextChoices):
-        """Each Problem type has a separate table."""
-        MULTIPLE_CHOICE_RADIO = 'Multiple Choice Radio', _('Выбор одного варианта')
-        MULTIPLE_CHOICE_CHECKBOX = 'Multiple Choice Checkbox', _('Выбор нескольких вариантов')
-        FILL_IN_SINGLE_BLANK = 'Fill In Single Blank', _('Заполнение пропуска')
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.TextField()
     description = models.TextField()

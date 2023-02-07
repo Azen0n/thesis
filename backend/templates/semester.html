@@ -9,7 +9,16 @@
         <span title="{{ semester.started_at|date:"d.m.Y G:i:s" }}">{{ semester.started_at|date:"j b" }}</span> –
         <span title="{{ semester.ended_at|date:"d.m.Y G:i:s" }}">{{ semester.ended_at|date:"j b Y" }}</span>
         <p><b>Описание</b><br>{{ semester.course.description }}</p>
-        <button>Записаться</button>
+        {% if user.is_authenticated %}
+            {% if semester in user.semester_student_set.all %}
+                Вы записаны на курс
+            {% else %}
+                <form action="{% url 'enroll' semester.id %}" method="POST">
+                    {% csrf_token %}
+                    <button type="submit">Записаться</button>
+                </form>
+            {% endif %}
+        {% endif %}
         <p>Модули</p>
         <ol>
             {% for module in semester.course.module_set.all %}

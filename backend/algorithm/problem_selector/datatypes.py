@@ -9,9 +9,9 @@ TOPIC_THRESHOLD_HIGH = 91
 TOPIC_MAX_POINTS = 100
 THEORY_TO_PRACTICE = 0.4
 
-POINTS_EASY = 2
-POINTS_NORMAL = 5
-POINTS_HARD = 9
+POINTS_EASY = 4.0
+POINTS_NORMAL = 10.0
+POINTS_HARD = 16.5
 
 DIFFICULTY_THRESHOLD_NORMAL = 3
 DIFFICULTY_THRESHOLD_HARD = 2
@@ -273,14 +273,15 @@ class AttemptManager:
 
 @dataclass
 class User:
-    id: int
-    progress: list[Progress]
+    user_data: User
+    progress: list[Progress] = None
     current_topic: Progress = None
     theory: AttemptManager = None
     practice: AttemptManager = None
     difficulty_preference: Difficulty = Difficulty.EASY
 
     def __post_init__(self):
+        self.progress = self.user_data.progress_set
         self.current_topic = self.progress[0]
         self.theory = AttemptManager(self, AttemptTheory)
         self.practice = AttemptManager(self, AttemptPractice)
@@ -303,5 +304,5 @@ class User:
         return progress
 
     def __str__(self):
-        return (f'id: {self.id}, topics:'
+        return (f'id: {self.user_data.user.id}, topics:'
                 f' {", ".join([progress.topic.title for progress in self.progress])}\n')

@@ -7,6 +7,7 @@ from django.views import View
 from django.views.generic import ListView, DetailView
 
 from .models import Semester, Topic, Problem
+from .utils import get_answer_safe_data
 
 
 class SemesterListView(ListView):
@@ -37,32 +38,7 @@ class ProblemView(View):
 
     def get(self, request: HttpRequest, pk: UUID):
         problem = Problem.objects.get(pk=pk)
-
-        match problem.type:
-            case 'Multiple Choice Radio':
-                answer = {
-                    'type': 'Multiple Choice Radio',
-                    'options': [{'id': str(option.id),
-                                 'text': option.text} for option in
-                                problem.multiplechoiceradio_set.all()]
-                }
-            case 'Multiple Choice Checkbox':
-                answer = {
-                    'type': 'Multiple Choice Checkbox',
-                    'options': [{'id': str(option.id),
-                                 'text': option.text} for option in
-                                problem.multiplechoicecheckbox_set.all()]
-                }
-            case 'Fill In Single Blank':
-                option = problem.fillinsingleblank_set.all()[0]
-                answer = {
-                    'type': 'Fill In Single Blank',
-                    'options': {'id': str(option.id),
-                                'text': option.text}
-                }
-            case _:
-                answer = {}
-
+        answer = get_answer_safe_data(problem)
         context = {
             'problem': problem,
             'answer': json.dumps(answer),
