@@ -6,11 +6,7 @@ from courses.models import Semester, Topic, Problem, Type
 
 
 def initialize_algorithm() -> ProblemSelector:
-    theory_problems = list(Problem.objects.filter(
-        type__in=[Type.MULTIPLE_CHOICE_RADIO,
-                  Type.MULTIPLE_CHOICE_CHECKBOX,
-                  Type.FILL_IN_SINGLE_BLANK]
-    ))
+    theory_problems = []
     practice_problems = []
     return ProblemSelector(theory_problems, practice_problems)
 

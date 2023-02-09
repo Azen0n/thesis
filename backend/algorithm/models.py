@@ -125,10 +125,10 @@ class UserAnswer(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
-class UserCurrentTopic(models.Model):
+class UserCurrentProgress(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     semester = models.ForeignKey(Semester, on_delete=models.CASCADE)
-    current_topic = models.ForeignKey(Progress, on_delete=models.CASCADE)
+    progress = models.ForeignKey(Progress, on_delete=models.CASCADE)
 
     class Meta:
         unique_together = (('user', 'semester'),)

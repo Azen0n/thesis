@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from datatypes import TheoryProblem, User, Difficulty
+from .datatypes import TheoryProblem, User, Difficulty
 
 
 @dataclass
