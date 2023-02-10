@@ -84,34 +84,6 @@ class Progress(models.Model):
     def points(self) -> float:
         return self.theory.points + self.practice.points
 
-    @property
-    def practice_difficulty(self) -> dict[Difficulty, int]:
-        normal = self.topic.module.course.difficulty_threshold_normal
-        hard = self.topic.module.course.difficulty_threshold_hard
-        is_medium_reached = self.theory.is_medium_reached()
-        is_high_reached = self.theory.is_high_reached()
-
-        return {
-            Difficulty.EASY: normal if is_medium_reached else 0,
-            Difficulty.NORMAL: hard if is_high_reached else 0,
-            Difficulty.HARD: 0
-        }
-
-    @property
-    def max_difficulty(self) -> Difficulty:
-        normal = self.topic.module.course.difficulty_threshold_normal
-        hard = self.topic.module.course.difficulty_threshold_hard
-
-        if self.theory.is_high_reached():
-            return Difficulty.HARD
-        if self.practice_difficulty[Difficulty.NORMAL] >= hard:
-            return Difficulty.HARD
-        if self.theory.is_medium_reached():
-            return Difficulty.NORMAL
-        if self.practice_difficulty[Difficulty.EASY] >= normal:
-            return Difficulty.NORMAL
-        return Difficulty.EASY
-
     def __str__(self):
         return (f'{self.user.username} - {self.topic.title}'
                 f' ({self.theory.points:.2f} / {self.practice.points:.2f}'

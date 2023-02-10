@@ -3,7 +3,9 @@ from dataclasses import dataclass
 from django.db.models import QuerySet, Q
 
 from algorithm.models import UserCurrentProgress, UserAnswer
-from courses.models import Problem, Type, Course, Difficulty
+from .utils import (is_current_topic_in_progress, increase_difficulty,
+                    decrease_difficulty, get_theory_threshold_low)
+from courses.models import Problem, Difficulty, THEORY_TYPES
 
 
 @dataclass
@@ -12,17 +14,13 @@ class TheorySelector:
     @property
     def problems(self) -> QuerySet[Problem]:
         """Возвращает теоретические задания."""
-        return Problem.objects.filter(type__in=[
-            Type.MULTIPLE_CHOICE_RADIO,
-            Type.MULTIPLE_CHOICE_CHECKBOX,
-            Type.FILL_IN_SINGLE_BLANK,
-        ])
+        return Problem.objects.filter(type__in=THEORY_TYPES)
 
     def next(self, u: UserCurrentProgress) -> Problem:
         """Возвращает теоретическое задание по текущей теме пользователя."""
         if u.progress.theory.is_completed():
             raise NotImplementedError('Тест по теории завершен.')
-        if is_current_topic_in_progress(u):
+        if not is_current_topic_in_progress(u, THEORY_TYPES):
             return self.first_problem(u)
         return self.next_problem(u)
 
@@ -37,7 +35,8 @@ class TheorySelector:
         """Возвращает следующее задание по текущей теме пользователя."""
         last_answer = UserAnswer.objects.filter(
             user=u.user,
-            problem__main_topic=u.progress.topic
+            problem__main_topic=u.progress.topic,
+            problem__type__in=THEORY_TYPES
         ).order_by('-created_at').first()
         if last_answer.is_solved:
             difficulty = increase_difficulty(last_answer.problem.difficulty)
@@ -61,37 +60,3 @@ class TheorySelector:
             difficulty__lte=max_difficulty,
         ).order_by('-difficulty')
         return problems
-
-
-def get_theory_threshold_low(course: Course) -> float:
-    """Возвращает минимальное количество баллов, необходимое для завершения
-    теории по теме.
-    """
-    topic_max_points = course.topic_max_points
-    threshold_low = course.topic_threshold_low
-    low = course.topic_theory_max_points * (threshold_low / topic_max_points)
-    return low
-
-
-def is_current_topic_in_progress(u: UserCurrentProgress) -> bool:
-    """Проверка на наличие ответов от пользователя по текущей теме."""
-    return UserAnswer.objects.filter(
-        user=u.user,
-        problem__main_topic=u.progress.topic
-    ).first() is None
-
-
-def increase_difficulty(value: int) -> Difficulty:
-    """Повышает сложность на один уровень."""
-    try:
-        return Difficulty(value + 1)
-    except ValueError:
-        return Difficulty(value)
-
-
-def decrease_difficulty(value: int) -> Difficulty:
-    """Понижает сложность на один уровень."""
-    try:
-        return Difficulty(value - 1)
-    except ValueError:
-        return Difficulty(value)

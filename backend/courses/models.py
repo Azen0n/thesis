@@ -110,6 +110,18 @@ class Type(models.TextChoices):
     MULTIPLE_CHOICE_RADIO = 'Multiple Choice Radio', _('Выбор одного варианта')
     MULTIPLE_CHOICE_CHECKBOX = 'Multiple Choice Checkbox', _('Выбор нескольких вариантов')
     FILL_IN_SINGLE_BLANK = 'Fill In Single Blank', _('Заполнение пропуска')
+    CODE = 'Code', _('Код')
+
+
+THEORY_TYPES = [
+    Type.MULTIPLE_CHOICE_RADIO,
+    Type.MULTIPLE_CHOICE_CHECKBOX,
+    Type.FILL_IN_SINGLE_BLANK,
+]
+
+PRACTICE_TYPES = [
+    Type.CODE,
+]
 
 
 class Problem(models.Model):
