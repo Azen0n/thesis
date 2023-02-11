@@ -31,14 +31,10 @@ class MultipleChoiceCheckbox(models.Model):
 
 class FillInSingleBlank(models.Model):
     """Fill In Single Blank Type of Problem model.
-
-    Answer (text) format is "The Mona Lisa was painted by Leonardo {}." where
-    input is located in curly braces. If text is null, then input is displayed
-    without additional text.
-    Blank has one or more accepted options.
+    Each entry is correct variant of answer.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    text = models.TextField(null=True, blank=True)
+    text = models.TextField()
     explanation = models.TextField(null=True, blank=True)
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
 
@@ -46,11 +42,15 @@ class FillInSingleBlank(models.Model):
         return self.text
 
 
-class FillInSingleBlankOption(models.Model):
-    """Option for Fill In Single Blank Type."""
+class Answer(models.Model):
+    """Сущность, содержащая ответ пользователя на задание конкретного типа."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    answer = models.ForeignKey(FillInSingleBlank, on_delete=models.CASCADE)
-    text = models.TextField()
-
-    def __str__(self):
-        return self.text
+    multiple_choice_radio = models.ForeignKey(MultipleChoiceRadio,
+                                              on_delete=models.CASCADE,
+                                              blank=True, null=True)
+    multiple_choice_checkbox = models.ForeignKey(MultipleChoiceCheckbox,
+                                                 on_delete=models.CASCADE,
+                                                 blank=True, null=True)
+    fill_in_single_blank = models.ForeignKey(FillInSingleBlank,
+                                             on_delete=models.CASCADE,
+                                             blank=True, null=True)

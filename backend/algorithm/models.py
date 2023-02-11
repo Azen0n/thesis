@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 
+from answers.models import Answer
 from courses.models import Topic, Problem, Difficulty, Semester
 
 
@@ -19,19 +20,19 @@ class AbstractProgress(models.Model):
     def is_low_reached(self) -> bool:
         topic_max_points = self.topic.module.course.topic_max_points
         threshold_low = self.topic.module.course.topic_threshold_low
-        low = topic_max_points * (threshold_low / self.max)
+        low = self.max * (threshold_low / topic_max_points)
         return self.points >= low
 
     def is_medium_reached(self) -> bool:
         topic_max_points = self.topic.module.course.topic_max_points
         threshold_medium = self.topic.module.course.topic_threshold_medium
-        medium = topic_max_points * (threshold_medium / self.max)
+        medium = self.max * (threshold_medium / topic_max_points)
         return self.points >= medium
 
     def is_high_reached(self) -> bool:
         topic_max_points = self.topic.module.course.topic_max_points
         threshold_high = self.topic.module.course.topic_threshold_high
-        high = topic_max_points * (threshold_high / self.max)
+        high = self.max * (threshold_high / topic_max_points)
         return self.points >= high
 
     def is_completed(self) -> bool:
@@ -94,6 +95,7 @@ class UserAnswer(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
     is_solved = models.BooleanField()
+    answer = models.ForeignKey(Answer, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
 

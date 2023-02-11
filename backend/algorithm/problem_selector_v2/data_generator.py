@@ -14,10 +14,11 @@ def generate_test_data():
     semester = Semester.objects.filter(course__title='Test Course').first()
     if not semester:
         semester = create_test_semester()
+        create_test_topics(semester.course, number_of_topics=10)
+        create_problems(semester.course)
     user = User.objects.filter(username='test_user').first()
     if not user:
         user = create_test_user()
-    if semester.students.filter(username=user.username).first() is None:
         semester.students.add(user)
         create_user_progress(semester, user)
         UserCurrentProgress.objects.create(
@@ -27,8 +28,6 @@ def generate_test_data():
                 topic=semester.course.module_set.first().topic_set.first(),
                 user=user).first()
         )
-    create_test_topics(semester.course, number_of_topics=10)
-    create_problems(semester.course)
 
 
 def create_test_semester() -> Semester:

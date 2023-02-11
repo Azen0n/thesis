@@ -21,9 +21,9 @@ class Course(models.Model):
     topic_theory_max_points = models.IntegerField(default=40)
     topic_practice_max_points = models.IntegerField(default=60)
 
-    points_easy = models.IntegerField(default=2)
-    points_normal = models.IntegerField(default=5)
-    points_hard = models.IntegerField(default=9)
+    points_easy = models.FloatField(default=5.0)
+    points_normal = models.FloatField(default=9.0)
+    points_hard = models.FloatField(default=18.0)
 
     difficulty_threshold_normal = models.IntegerField(default=3)
     difficulty_threshold_hard = models.IntegerField(default=2)
