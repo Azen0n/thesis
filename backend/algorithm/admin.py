@@ -7,6 +7,7 @@ algorithm = [algorithm_models.Progress,
              algorithm_models.WeakestLinkProblem,
              algorithm_models.WeakestLinkTopic,
              algorithm_models.PracticeProgress,
-             algorithm_models.UserAnswer]
+             algorithm_models.UserAnswer,
+             algorithm_models.UserCurrentProgress]
 
 admin.site.register(algorithm)

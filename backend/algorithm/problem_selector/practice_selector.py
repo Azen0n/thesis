@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from datatypes import PracticeProblem, User, Difficulty, Attempt, Topic
+from .datatypes import PracticeProblem, User, Difficulty, Attempt, Topic
 
 MAX_NUMBER_OF_PROBLEMS_PER_SUB_TOPIC = 2
 

@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 
+from answers.models import Answer
 from courses.models import Topic, Problem, Difficulty, Semester
 
 
@@ -19,19 +20,19 @@ class AbstractProgress(models.Model):
     def is_low_reached(self) -> bool:
         topic_max_points = self.topic.module.course.topic_max_points
         threshold_low = self.topic.module.course.topic_threshold_low
-        low = topic_max_points * (threshold_low / self.max)
+        low = self.max * (threshold_low / topic_max_points)
         return self.points >= low
 
     def is_medium_reached(self) -> bool:
         topic_max_points = self.topic.module.course.topic_max_points
         threshold_medium = self.topic.module.course.topic_threshold_medium
-        medium = topic_max_points * (threshold_medium / self.max)
+        medium = self.max * (threshold_medium / topic_max_points)
         return self.points >= medium
 
     def is_high_reached(self) -> bool:
         topic_max_points = self.topic.module.course.topic_max_points
         threshold_high = self.topic.module.course.topic_threshold_high
-        high = topic_max_points * (threshold_high / self.max)
+        high = self.max * (threshold_high / topic_max_points)
         return self.points >= high
 
     def is_completed(self) -> bool:
@@ -84,34 +85,6 @@ class Progress(models.Model):
     def points(self) -> float:
         return self.theory.points + self.practice.points
 
-    @property
-    def practice_difficulty(self) -> dict[Difficulty, int]:
-        normal = self.topic.module.course.difficulty_threshold_normal
-        hard = self.topic.module.course.difficulty_threshold_hard
-        is_medium_reached = self.theory.is_medium_reached()
-        is_high_reached = self.theory.is_high_reached()
-
-        return {
-            Difficulty.EASY: normal if is_medium_reached else 0,
-            Difficulty.NORMAL: hard if is_high_reached else 0,
-            Difficulty.HARD: 0
-        }
-
-    @property
-    def max_difficulty(self) -> Difficulty:
-        normal = self.topic.module.course.difficulty_threshold_normal
-        hard = self.topic.module.course.difficulty_threshold_hard
-
-        if self.theory.is_high_reached():
-            return Difficulty.HARD
-        if self.practice_difficulty[Difficulty.NORMAL] >= hard:
-            return Difficulty.HARD
-        if self.theory.is_medium_reached():
-            return Difficulty.NORMAL
-        if self.practice_difficulty[Difficulty.EASY] >= normal:
-            return Difficulty.NORMAL
-        return Difficulty.EASY
-
     def __str__(self):
         return (f'{self.user.username} - {self.topic.title}'
                 f' ({self.theory.points:.2f} / {self.practice.points:.2f}'
@@ -122,13 +95,14 @@ class UserAnswer(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
     is_solved = models.BooleanField()
+    answer = models.ForeignKey(Answer, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
-class UserCurrentTopic(models.Model):
+class UserCurrentProgress(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     semester = models.ForeignKey(Semester, on_delete=models.CASCADE)
-    current_topic = models.ForeignKey(Progress, on_delete=models.CASCADE)
+    progress = models.ForeignKey(Progress, on_delete=models.CASCADE)
 
     class Meta:
         unique_together = (('user', 'semester'),)

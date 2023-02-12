@@ -2,15 +2,13 @@ from dataclasses import dataclass
 
 from prettytable import PrettyTable
 
-from datatypes import User, Topic, TheoryProblem, PracticeProblem, Problem
-from practice_selector import PracticeSelector
-from theory_selector import TheorySelector
+from .datatypes import User, Topic, TheoryProblem, PracticeProblem, Problem
+from .practice_selector import PracticeSelector
+from .theory_selector import TheorySelector
 
 
 @dataclass
 class ProblemSelector:
-    users: list[User]
-    topics: list[Topic]
     theory_problems: list[TheoryProblem]
     practice_problems: list[PracticeProblem]
     theory_selector: TheorySelector = None
