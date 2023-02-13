@@ -12,6 +12,7 @@ def create_user_answer(u: UserCurrentProgress, problem: Problem,
     """
     UserAnswer.objects.create(
         user=u.user,
+        semester=u.semester,
         problem=problem,
         is_solved=is_solved,
         answer=Answer.objects.create()
@@ -34,6 +35,7 @@ def add_points_to_topic(u: UserCurrentProgress, topic: Topic,
     """Добавляет баллы в тему задания."""
     topic_progress = Progress.objects.filter(
         user=u.user,
+        semester=u.semester,
         topic=topic
     ).first()
     if topic_progress is None:
