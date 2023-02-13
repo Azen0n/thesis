@@ -55,7 +55,8 @@ class TheorySelector:
         threshold_low = get_theory_threshold_low(u.progress.topic.module.course)
         problems = self.problems.filter(
             ~Q(useranswer__user=u.user),
-            Q(sub_topics__theoryprogress__points__gte=threshold_low) | Q(sub_topics__isnull=True),
+            Q(sub_topics__progress__user=u.user) and (
+                        Q(sub_topics__theoryprogress__points__gte=threshold_low) or Q(sub_topics__isnull=True)),
             main_topic=u.progress.topic,
             difficulty__lte=max_difficulty,
         ).order_by('-difficulty')

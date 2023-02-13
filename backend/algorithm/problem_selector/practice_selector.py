@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from django.db.models import QuerySet, Q
 
 from algorithm.models import UserCurrentProgress, UserAnswer
-from algorithm.problem_selector_v2.utils import (
+from algorithm.problem_selector.utils import (
     get_theory_threshold_low, is_current_topic_in_progress,
     change_practice_difficulty, max_practice_difficulty
 )

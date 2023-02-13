@@ -3,7 +3,7 @@ from uuid import UUID
 from django.contrib.auth.models import User
 
 from algorithm.models import Progress, TheoryProgress, PracticeProgress, UserCurrentProgress
-from algorithm.problem_selector_v2 import ProblemSelector
+from algorithm.problem_selector import ProblemSelector
 from courses.models import Semester, Topic
 
 
