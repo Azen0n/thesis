@@ -1,12 +1,16 @@
+import uuid
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 
+import courses.models
 from answers.models import Answer
-from courses.models import Topic, Problem, Difficulty, Semester
+from courses.models import Topic, Problem, Semester
 
 
 class AbstractProgress(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     points = models.FloatField(default=0)
     topic = models.ForeignKey(Topic, on_delete=models.CASCADE)
 
@@ -39,7 +43,7 @@ class AbstractProgress(models.Model):
         return self.points >= self.max
 
     def __str__(self):
-        return f'{self.topic.title} ({self.points:.2f})'
+        return f'{self.topic} ({self.points:.2f})'
 
 
 class TheoryProgress(AbstractProgress):
@@ -57,14 +61,24 @@ class PracticeProgress(AbstractProgress):
 
 
 class WeakestLinkProblem(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
     progress = models.ForeignKey('Progress', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return (f'user={self.progress.user}, progress={self.progress},'
+                f' problem={self.problem}')
+
 
 class WeakestLinkTopic(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     topic = models.ForeignKey(Topic, on_delete=models.CASCADE)
     progress = models.ForeignKey('Progress', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return (f'user={self.progress.user}, progress={self.progress},'
+                f' topic={self.topic}')
 
 
 class Progress(models.Model):
@@ -73,13 +87,21 @@ class Progress(models.Model):
         TRUE = 'True', _('Weakest Link done')
         NONE = 'None', _('Weakest Link not started')
 
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    semester = models.ForeignKey(Semester, on_delete=models.CASCADE)
     topic = models.ForeignKey(Topic, on_delete=models.CASCADE)
     theory = models.ForeignKey(TheoryProgress, on_delete=models.CASCADE)
     practice = models.ForeignKey(PracticeProgress, on_delete=models.CASCADE)
     weakest_link_state = models.CharField(max_length=5,
                                           choices=WeakestLinkState.choices,
                                           default=WeakestLinkState.NONE)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'semester', 'topic'],
+                                    name='unique_user_semester_topic')
+        ]
 
     @property
     def points(self) -> float:
@@ -92,17 +114,31 @@ class Progress(models.Model):
 
 
 class UserAnswer(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    semester = models.ForeignKey(Semester, on_delete=models.CASCADE)
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
     is_solved = models.BooleanField()
     answer = models.ForeignKey(Answer, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return (f'user={self.user}, problem={self.problem},'
+                f' is_solved={self.is_solved}')
+
 
 class UserCurrentProgress(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     semester = models.ForeignKey(Semester, on_delete=models.CASCADE)
     progress = models.ForeignKey(Progress, on_delete=models.CASCADE)
 
     class Meta:
-        unique_together = (('user', 'semester'),)
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'semester'],
+                                    name='unique_user_semester')
+        ]
+
+    def __str__(self):
+        return (f'user={self.user}, semester={self.semester},'
+                f' progress={self.progress}')
