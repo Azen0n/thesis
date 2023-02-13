@@ -52,10 +52,9 @@ function multipleChoiceCheckbox(answer, answerElement) {
 }
 
 function fillInSingleBlank(answer, answerElement) {
-    let optionText = answer['options']['text'];
-    optionText = optionText.split('{}');
+    let optionId = answer['options']['id'];
     answerElement.innerHTML = `
-        <p>Заполните пропуск</p>
-        <p>${optionText[0]}<span><input type="text"></span>${optionText[1]}</p>
+        <p>Введите ответ</p>
+        <input type="text" id="${optionId}"></span>
     `;
 }

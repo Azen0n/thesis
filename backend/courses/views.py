@@ -22,24 +22,26 @@ class SemesterDetailView(DetailView):
     context_object_name = 'semester'
 
 
-class TopicDetailView(DetailView):
-    model = Topic
-    template_name = 'topic.html'
-    context_object_name = 'topic'
+class TopicView(View):
 
-
-class ProblemDetailView(DetailView):
-    model = Problem
-    template_name = 'problem.html'
-    context_object_name = 'problem'
+    def get(self, request: HttpRequest, semester_pk: UUID, pk: UUID):
+        semester = Semester.objects.get(pk=semester_pk)
+        topic = Topic.objects.get(pk=pk)
+        context = {
+            'semester': semester,
+            'topic': topic,
+        }
+        return render(request, 'topic.html', context)
 
 
 class ProblemView(View):
 
-    def get(self, request: HttpRequest, pk: UUID):
+    def get(self, request: HttpRequest, semester_pk: UUID, pk: UUID):
+        semester = Semester.objects.get(pk=semester_pk)
         problem = Problem.objects.get(pk=pk)
         answer = get_answer_safe_data(problem)
         context = {
+            'semester': semester,
             'problem': problem,
             'answer': json.dumps(answer),
         }

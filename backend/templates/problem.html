@@ -8,7 +8,7 @@
 {% endblock %}
 {% block content %}
     <body>
-    <h4>Тема: <a href="{% url 'topic' problem.main_topic.pk %}">{{ problem.main_topic.title }}</a></h4>
+    <h4>Тема: <a href="{% url 'topic' semester.pk problem.main_topic.pk %}">{{ problem.main_topic.title }}</a></h4>
     <div id="problem">
         <h3>{{ problem.title }}</h3>
         <p>{{ problem.description }}</p>

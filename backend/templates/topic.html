@@ -23,7 +23,7 @@
         {% for problem in topic.problem_main_set.all %}
             <tr>
                 <td>{{ forloop.counter }}.</td>
-                <td><a href="{% url 'problem' problem.pk %}">{{ problem.title }}</a></td>
+                <td><a href="{% url 'problem' semester.pk problem.pk %}">{{ problem.title }}</a></td>
                 <td>{{ problem.difficulty }}</td>
             </tr>
         {% empty %}

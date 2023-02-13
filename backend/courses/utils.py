@@ -21,8 +21,7 @@ def get_answer_safe_data(problem: Problem):
             option = problem.fillinsingleblank_set.all()[0]
             answer = {
                 'type': 'Fill In Single Blank',
-                'options': {'id': str(option.id),
-                            'text': option.text}
+                'options': {'id': str(option.id)}
             }
         case _:
             answer = {}

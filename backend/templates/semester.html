@@ -37,7 +37,7 @@
                                     <td>{{ forloop.counter }}. <span title="Обязательный">{% if module.is_required %}
                                         *{% endif %}</span></td>
                                     <td style="padding-right: 20px"><a
-                                            href="{% url 'topic' topic.pk %}">{{ topic.title }}</a></td>
+                                            href="{% url 'topic' semester.pk topic.pk %}">{{ topic.title }}</a></td>
                                     <td style="padding-right: 20px" title="Время на завершение">
                                         {{ topic.time_to_complete }} ч
                                     </td>
