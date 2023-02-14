@@ -4,7 +4,6 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 
-import courses.models
 from answers.models import Answer
 from courses.models import Topic, Problem, Semester
 
@@ -93,6 +92,7 @@ class Progress(models.Model):
     topic = models.ForeignKey(Topic, on_delete=models.CASCADE)
     theory = models.ForeignKey(TheoryProgress, on_delete=models.CASCADE)
     practice = models.ForeignKey(PracticeProgress, on_delete=models.CASCADE)
+    skill_level = models.FloatField(default=1.4)
     weakest_link_state = models.CharField(max_length=5,
                                           choices=WeakestLinkState.choices,
                                           default=WeakestLinkState.NONE)

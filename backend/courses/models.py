@@ -15,20 +15,30 @@ class Course(models.Model):
     duration = models.IntegerField()
     thumbnail = models.FileField(upload_to='thumbnails/', blank=True, null=True)
 
-    topic_threshold_low = models.IntegerField(default=61)
-    topic_threshold_medium = models.IntegerField(default=76)
-    topic_threshold_high = models.IntegerField(default=91)
-    topic_theory_max_points = models.IntegerField(default=40)
-    topic_practice_max_points = models.IntegerField(default=60)
+    topic_threshold_low = models.IntegerField(default=61, editable=False)
+    topic_threshold_medium = models.IntegerField(default=76, editable=False)
+    topic_threshold_high = models.IntegerField(default=91, editable=False)
+    topic_theory_max_points = models.IntegerField(default=40, editable=False)
+    topic_practice_max_points = models.IntegerField(default=60, editable=False)
 
     points_easy = models.FloatField(default=5.0)
     points_normal = models.FloatField(default=9.0)
     points_hard = models.FloatField(default=18.0)
 
-    difficulty_threshold_normal = models.IntegerField(default=3)
-    difficulty_threshold_hard = models.IntegerField(default=2)
+    algorithm_skill_level_placement_answers = models.FloatField(default=5, editable=False)
+    algorithm_correct_answer_bonus = models.FloatField(default=0.05, editable=False)
+    algorithm_wrong_answer_penalty = models.FloatField(default=0.07, editable=False)
 
-    sub_topic_points_coefficient = models.FloatField(default=1 / 3)
+    algorithm_difficulty_coefficient_easy = models.FloatField(default=0.3, editable=False)
+    algorithm_difficulty_coefficient_normal = models.FloatField(default=0.6, editable=False)
+    algorithm_difficulty_coefficient_hard = models.FloatField(default=0.9, editable=False)
+
+    algorithm_suitable_difficulty_probability = models.FloatField(default=0.75, editable=False)
+
+    difficulty_threshold_normal = models.IntegerField(default=3, editable=False)
+    difficulty_threshold_hard = models.IntegerField(default=2, editable=False)
+
+    sub_topic_points_coefficient = models.FloatField(default=1 / 3, editable=False)
 
     @property
     def topic_max_points(self) -> float:
