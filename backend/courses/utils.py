@@ -18,10 +18,9 @@ def get_answer_safe_data(problem: Problem):
                             problem.multiplechoicecheckbox_set.all()]
             }
         case 'Fill In Single Blank':
-            option = problem.fillinsingleblank_set.all()[0]
             answer = {
                 'type': 'Fill In Single Blank',
-                'options': {'id': str(option.id)}
+                'problem_id': str(problem.id)
             }
         case _:
             answer = {}
