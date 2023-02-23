@@ -2,11 +2,9 @@ from django.contrib.auth.models import User
 from django.db.models import QuerySet
 
 from algorithm.models import Progress
-from algorithm.utils import initialize_algorithm
+from algorithm.problem_selector.problem_selector import next_theory_problem, next_practice_problem
 from answers.create_answer import create_user_answer
 from courses.models import Semester, Problem
-
-problem_selector = initialize_algorithm()
 
 
 def main():
@@ -70,13 +68,13 @@ def perform_action(user: User, semester: Semester, progress: Progress | None) ->
 
 def theory_problem(progress: Progress):
     """Подбирает следующее задание по практике."""
-    problem = problem_selector.next_theory_problem(progress)
+    problem = next_theory_problem(progress)
     print_problem_and_create_answer(progress.user, progress.semester, problem)
 
 
 def practice_problem(user: User, semester: Semester):
     """Подбирает следующее задание по практике."""
-    problem = problem_selector.next_practice_problem(user, semester)
+    problem = next_practice_problem(user, semester)
     print_problem_and_create_answer(user, semester, problem)
 
 

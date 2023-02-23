@@ -1,12 +1,7 @@
 from django.contrib.auth.models import User
 
 from algorithm.models import Progress, UserWeakestLinkState, WeakestLinkState
-from algorithm.problem_selector import ProblemSelector
 from courses.models import Semester
-
-
-def initialize_algorithm() -> ProblemSelector:
-    return ProblemSelector()
 
 
 def create_user_progress(semester: Semester, user: User):

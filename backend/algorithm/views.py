@@ -3,10 +3,8 @@ from uuid import UUID
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 
-from algorithm.utils import create_user_progress, initialize_algorithm
+from algorithm.utils import create_user_progress
 from courses.models import Semester
-
-algorithm = initialize_algorithm()
 
 
 def enroll_semester(request: HttpRequest, pk: UUID) -> HttpResponse:

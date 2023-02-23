@@ -2,10 +2,9 @@ from django.contrib.auth.models import User
 from django.db import transaction
 
 from algorithm.models import (UserAnswer, Progress, WeakestLinkState,
-                              UserWeakestLinkState, WeakestLinkProblem, WeakestLinkTopic)
-from algorithm.problem_selector.weakest_link import (update_user_weakest_link_state,
-                                                     change_weakest_link_problem_is_solved,
-                                                     delete_group_topics_and_problems_when_completed)
+                              UserWeakestLinkState)
+from algorithm.problem_selector.weakest_link import (weakest_link_in_progress,
+                                                     weakest_link_done)
 from config.settings import Constants
 from .models import Answer
 from courses.models import (Problem, THEORY_TYPES, PRACTICE_TYPES,
@@ -45,35 +44,6 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
     change_user_skill_level(progress, is_solved)
     if is_solved:
         add_points_for_problem(user, semester, problem)
-
-
-def weakest_link_in_progress(user: User, semester: Semester, problem: Problem, is_solved: bool):
-    """Устанавливает ответ пользователя на задание в очереди слабого звена,
-    удаляет завершенные группы и меняет статус алгоритма, если он завершен.
-    """
-    change_weakest_link_problem_is_solved(user, semester, problem, is_solved)
-    delete_group_topics_and_problems_when_completed(user, semester)
-    problems = WeakestLinkProblem.objects.filter(user=user, semester=semester, is_solved__isnull=True)
-    if not problems:
-        update_user_weakest_link_state(user, semester, WeakestLinkState.DONE)
-
-
-def weakest_link_done(user: User, semester: Semester):
-    """Понижает уровень знаний по проблемным темам, определенным поиском слабого звена,
-    удаляет темы из очереди и меняет статус алгоритма на None.
-    """
-    topics = WeakestLinkTopic.objects.filter(user=user, semester=semester)
-    decrease_user_skill_level_after_weakest_link(user, semester, topics)
-    WeakestLinkTopic.objects.filter(user=user, semester=semester, topic__in=topics).delete()
-    update_user_weakest_link_state(user, semester, WeakestLinkState.NONE)
-
-
-def decrease_user_skill_level_after_weakest_link(user: User, semester: Semester, topics: list[Topic]):
-    """Понижает уровень знаний по проблемным темам, определенным поиском слабого звена."""
-    for topic in topics:
-        progress = Progress.objects.get(user=user, semester=semester, topic=topic)
-        progress.skill_level -= Constants.ALGORITHM_WRONG_ANSWER_PENALTY * 2
-        progress.save()
 
 
 def change_user_skill_level(progress: Progress, is_solved: bool):

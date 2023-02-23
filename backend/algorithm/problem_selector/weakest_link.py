@@ -3,8 +3,9 @@ from django.db.models import QuerySet
 
 from algorithm.models import (UserAnswer, WeakestLinkProblem,
                               UserWeakestLinkState, WeakestLinkState, WeakestLinkTopic, Progress)
+from algorithm.problem_selector.problem_selector import filter_practice_problems
 from algorithm.problem_selector.topic_graph import load_topic_graph
-from algorithm.problem_selector.utils import filter_practice_problems, get_last_user_answer
+from algorithm.problem_selector.utils import get_last_user_answer
 from config.settings import Constants
 from courses.models import Problem, Topic, Semester, Difficulty
 
@@ -176,3 +177,32 @@ def is_topic_group_completed(user: User, semester: Semester, group_number: int,
         is_solved=is_successful
     )
     return len(solved_problems) == Constants.WEAKEST_LINK_NUMBER_OF_PROBLEMS_TO_SOLVE
+
+
+def weakest_link_in_progress(user: User, semester: Semester, problem: Problem, is_solved: bool):
+    """Устанавливает ответ пользователя на задание в очереди слабого звена,
+    удаляет завершенные группы и меняет статус алгоритма, если он завершен.
+    """
+    change_weakest_link_problem_is_solved(user, semester, problem, is_solved)
+    delete_group_topics_and_problems_when_completed(user, semester)
+    problems = WeakestLinkProblem.objects.filter(user=user, semester=semester, is_solved__isnull=True)
+    if not problems:
+        update_user_weakest_link_state(user, semester, WeakestLinkState.DONE)
+
+
+def weakest_link_done(user: User, semester: Semester):
+    """Понижает уровень знаний по проблемным темам, определенным поиском слабого звена,
+    удаляет темы из очереди и меняет статус алгоритма на None.
+    """
+    topics = WeakestLinkTopic.objects.filter(user=user, semester=semester)
+    decrease_user_skill_level_after_weakest_link(user, semester, topics)
+    WeakestLinkTopic.objects.filter(user=user, semester=semester, topic__in=topics).delete()
+    update_user_weakest_link_state(user, semester, WeakestLinkState.NONE)
+
+
+def decrease_user_skill_level_after_weakest_link(user: User, semester: Semester, topics: list[Topic]):
+    """Понижает уровень знаний по проблемным темам, определенным поиском слабого звена."""
+    for topic in topics:
+        progress = Progress.objects.get(user=user, semester=semester, topic=topic)
+        progress.skill_level -= Constants.ALGORITHM_WRONG_ANSWER_PENALTY * 2
+        progress.save()
