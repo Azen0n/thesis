@@ -5,17 +5,13 @@ function main() {
     renderAnswer(answerElement);
 
     document.getElementById('answer_form').addEventListener(
-        "submit", function (e) {
+        'submit', function (e) {
             validateAnswer().then((data) => console.log(JSON.parse(data)));
             e.preventDefault();
         }
     )
 }
 
-/**
- *
- * @param answerElement
- */
 function renderAnswer(answerElement) {
     let answer = JSON.parse(answerElement.dataset.answer);
     switch (answer['type']) {

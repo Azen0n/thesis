@@ -4,7 +4,7 @@ from uuid import UUID
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
 from answers.models import FillInSingleBlank, MultipleChoiceRadio, MultipleChoiceCheckbox
-from courses.models import Semester, Problem
+from courses.models import Semester, Problem, Type
 
 
 def validate_answer(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -> HttpResponse:
@@ -16,6 +16,8 @@ def validate_answer(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -
     semester = Semester.objects.filter(id=semester_pk).first()
     user = request.user
     return JsonResponse(json.dumps({'coefficient': coefficient,
+                                    'correct_answers': get_correct_answers(problem_pk,
+                                                                           coefficient),
                                     'semester': semester.course.title,
                                     'user': user.username}), safe=False)
 
@@ -23,13 +25,15 @@ def validate_answer(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -
 def validate_answer_by_type(data: dict) -> int:
     """Возвращает TODO explain this shit"""
     match data['type']:
-        case 'Multiple Choice Radio':
+        case Type.MULTIPLE_CHOICE_RADIO.value:
             coefficient = validate_multiple_choice_radio(data.get('answer_id', None))
-        case 'Multiple Choice Checkbox':
+        case Type.MULTIPLE_CHOICE_CHECKBOX.value:
             coefficient = validate_multiple_choice_checkbox(data.get('answer_id', None))
-        case 'Fill In Single Blank':
+        case Type.FILL_IN_SINGLE_BLANK.value:
             coefficient = validate_fill_in_single_blank(data.get('problem_id', None),
                                                         data.get('value', None))
+        case Type.CODE.value:
+            raise NotImplementedError('Проверки практических заданий нет.')
         case other_type:
             raise ValueError(f'Неизвестный тип {other_type}')
     return coefficient
@@ -80,3 +84,21 @@ def validate_fill_in_single_blank(problem_id: str, value: str) -> int:
         if option.text.lower() == value.lower():
             return 1
     return 0
+
+
+def get_correct_answers(problem_id: UUID, coefficient: float) -> dict:
+    """Возвращает словарь с верными ответами на задание."""
+    problem = Problem.objects.get(pk=problem_id)
+    match problem.type:
+        case Type.MULTIPLE_CHOICE_RADIO.value:
+            answer = MultipleChoiceRadio.objects.get(problem=problem, is_correct=True)
+            return {'is_correct': str(answer.id)}
+        case Type.MULTIPLE_CHOICE_CHECKBOX.value:
+            answers = MultipleChoiceCheckbox.objects.filter(problem=problem, is_correct=True)
+            return {'is_correct': [str(answer.id) for answer in answers]}
+        case Type.FILL_IN_SINGLE_BLANK.value:
+            return {'is_correct': True if coefficient == 1.0 else False}
+        case Type.CODE.value:
+            raise NotImplementedError('Проверки практических заданий нет.')
+        case other_type:
+            raise ValueError(f'Неизвестный тип {other_type}')
