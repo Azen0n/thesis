@@ -3,9 +3,10 @@ import random
 
 from django.contrib.auth.models import User
 
-from algorithm.models import UserCurrentProgress, Progress
+from algorithm.models import TopicGraphEdge
 from algorithm.utils import create_user_progress
-from courses.models import Course, Semester, Module, Topic, Problem, THEORY_TYPES, Difficulty, Type, PRACTICE_TYPES
+from courses.models import (Course, Semester, Module, Topic, Problem,
+                            THEORY_TYPES, Difficulty, Type, PRACTICE_TYPES)
 
 random.seed(42)
 
@@ -21,13 +22,6 @@ def generate_test_data():
         user = create_test_user()
         semester.students.add(user)
         create_user_progress(semester, user)
-        UserCurrentProgress.objects.create(
-            user=user,
-            semester=semester,
-            progress=Progress.objects.filter(
-                topic=semester.course.module_set.first().topic_set.first(),
-                user=user).first()
-        )
 
 
 def create_test_semester() -> Semester:
@@ -107,3 +101,18 @@ def create_problem(problem_title: str, topic: Topic,
                                     k=random.randint(0, 2))
         if sub_topics:
             problem.sub_topics.add(*sub_topics)
+
+
+def create_random_topic_graph(topics: list[Topic]):
+    """Создает граф тем со случайными весами."""
+    course = topics[0].module.course
+    for topic1 in topics:
+        for topic2 in topics:
+            if topic1 == topic2:
+                continue
+            TopicGraphEdge.objects.create(
+                course=course,
+                topic1=topic1,
+                topic2=topic2,
+                weight=random.random()
+            )
