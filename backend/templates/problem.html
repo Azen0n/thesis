@@ -9,12 +9,13 @@
 {% block content %}
     <body>
     <h4>Тема: <a href="{% url 'topic' semester.pk problem.main_topic.pk %}">{{ problem.main_topic.title }}</a></h4>
-    <div id="problem">
+    <div id="problem" data-problem="{{ problem.id }}">
         <h3>{{ problem.title }}</h3>
         <p>{{ problem.description }}</p>
-        <form action="">
+        <form id="answer_form" action="">
+            {% csrf_token %}
             <div id="answer" data-answer="{{ answer }}"></div>
-            <button type="submit">Отправить</button>
+            <button id="submit_button" type="submit">Отправить</button>
         </form>
     </div>
 {% endblock %}
