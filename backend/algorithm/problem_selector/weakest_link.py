@@ -3,9 +3,8 @@ from django.db.models import QuerySet
 
 from algorithm.models import (UserAnswer, WeakestLinkProblem,
                               UserWeakestLinkState, WeakestLinkState, WeakestLinkTopic, Progress)
-from algorithm.problem_selector.problem_selector import filter_practice_problems
 from algorithm.problem_selector.topic_graph import load_topic_graph
-from algorithm.problem_selector.utils import get_last_user_answer
+from algorithm.problem_selector.utils import get_last_user_answer, filter_practice_problems
 from config.settings import Constants
 from courses.models import Problem, Topic, Semester, Difficulty
 
