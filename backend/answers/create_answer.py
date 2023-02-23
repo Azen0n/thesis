@@ -1,58 +1,103 @@
-from algorithm.models import (UserCurrentProgress, UserAnswer,
-                              Progress, AbstractProgress)
+from django.contrib.auth.models import User
+from django.db import transaction
+
+from algorithm.models import (UserAnswer, Progress, WeakestLinkState,
+                              UserWeakestLinkState, WeakestLinkProblem, WeakestLinkTopic)
+from algorithm.problem_selector.weakest_link import (update_user_weakest_link_state,
+                                                     change_weakest_link_problem_is_solved,
+                                                     delete_group_topics_and_problems_when_completed)
+from config.settings import Constants
 from .models import Answer
 from courses.models import (Problem, THEORY_TYPES, PRACTICE_TYPES,
-                            Difficulty, Topic)
+                            Difficulty, Topic, Semester)
+
+POINTS_BY_DIFFICULTY = {
+    Difficulty.EASY: Constants.POINTS_EASY,
+    Difficulty.NORMAL: Constants.POINTS_NORMAL,
+    Difficulty.HARD: Constants.POINTS_HARD,
+}
 
 
-def create_user_answer(u: UserCurrentProgress, problem: Problem,
+@transaction.atomic
+def create_user_answer(user: User, semester: Semester, problem: Problem,
                        is_solved: bool):
     """Создает ответ пользователя на задание и добавляет баллы в его
     главную тему и подтемы.
     """
-    user_answer = UserAnswer.objects.create(
-        user=u.user,
-        semester=u.semester,
+    user_weakest_link_state = UserWeakestLinkState.objects.get(user=user, semester=semester)
+    if user_weakest_link_state.state == WeakestLinkState.IN_PROGRESS:
+        weakest_link_in_progress(user, semester, problem, is_solved)
+    user_weakest_link_state.refresh_from_db()
+    if user_weakest_link_state.state == WeakestLinkState.DONE:
+        weakest_link_done(user, semester)
+    UserAnswer.objects.create(
+        user=user,
+        semester=semester,
         problem=problem,
         is_solved=is_solved,
-        answer=Answer.objects.create()
+        answer=Answer.objects.create(),
     )
-    change_user_skill_level(u, user_answer)
-    points_by_difficulty = {
-        Difficulty.EASY: u.semester.course.points_easy,
-        Difficulty.NORMAL: u.semester.course.points_normal,
-        Difficulty.HARD: u.semester.course.points_hard,
-    }
+    progress = Progress.objects.filter(
+        user=user,
+        semester=semester,
+        topic=problem.main_topic
+    ).first()
+    change_user_skill_level(progress, is_solved)
     if is_solved:
-        points = points_by_difficulty[Difficulty(problem.difficulty)]
-        sub_topic_points = points * u.semester.course.sub_topic_points_coefficient
-        add_points_to_topic(u, problem.main_topic, problem, points)
-        for topic in problem.sub_topics.all():
-            add_points_to_topic(u, topic, problem, sub_topic_points)
+        add_points_for_problem(user, semester, problem)
 
 
-def change_user_skill_level(u: UserCurrentProgress, user_answer: UserAnswer):
+def weakest_link_in_progress(user: User, semester: Semester, problem: Problem, is_solved: bool):
+    """Устанавливает ответ пользователя на задание в очереди слабого звена,
+    удаляет завершенные группы и меняет статус алгоритма, если он завершен.
+    """
+    change_weakest_link_problem_is_solved(user, semester, problem, is_solved)
+    delete_group_topics_and_problems_when_completed(user, semester)
+    problems = WeakestLinkProblem.objects.filter(user=user, semester=semester, is_solved__isnull=True)
+    if not problems:
+        update_user_weakest_link_state(user, semester, WeakestLinkState.DONE)
+
+
+def weakest_link_done(user: User, semester: Semester):
+    """Понижает уровень знаний по проблемным темам, определенным поиском слабого звена,
+    удаляет темы из очереди и меняет статус алгоритма на None.
+    """
+    topics = WeakestLinkTopic.objects.filter(user=user, semester=semester)
+    decrease_user_skill_level_after_weakest_link(user, semester, topics)
+    WeakestLinkTopic.objects.filter(user=user, semester=semester, topic__in=topics).delete()
+    update_user_weakest_link_state(user, semester, WeakestLinkState.NONE)
+
+
+def decrease_user_skill_level_after_weakest_link(user: User, semester: Semester, topics: list[Topic]):
+    """Понижает уровень знаний по проблемным темам, определенным поиском слабого звена."""
+    for topic in topics:
+        progress = Progress.objects.get(user=user, semester=semester, topic=topic)
+        progress.skill_level -= Constants.ALGORITHM_WRONG_ANSWER_PENALTY * 2
+        progress.save()
+
+
+def change_user_skill_level(progress: Progress, is_solved: bool):
     """Изменяет уровень знаний пользователя по текущей теме в зависимости от
     правильности ответа на задание."""
-    placement_coefficient = get_skill_level_placement_coefficient(u)
-    if user_answer.is_solved:
-        u.progress.skill_level += placement_coefficient * u.semester.course.algorithm_correct_answer_bonus
+    placement_coefficient = get_skill_level_placement_coefficient(progress)
+    if is_solved:
+        progress.skill_level += placement_coefficient * Constants.ALGORITHM_CORRECT_ANSWER_BONUS
     else:
-        u.progress.skill_level -= placement_coefficient * u.semester.course.algorithm_wrong_answer_penalty
-    u.progress.save()
+        progress.skill_level -= placement_coefficient * Constants.ALGORITHM_WRONG_ANSWER_PENALTY
+    progress.save()
 
 
-def get_skill_level_placement_coefficient(u: UserCurrentProgress) -> float:
+def get_skill_level_placement_coefficient(progress: Progress) -> float:
     """Калибровка уровня знаний студента. За первые несколько ответов
     пользователь получает больший прирост.
 
     Возвращает коэффициент прироста.
     """
     number_of_answered_problems = UserAnswer.objects.filter(
-        user=u.user,
-        problem__main_topic=u.progress.topic
+        user=progress.user,
+        problem__main_topic=progress.topic
     ).order_by('-created_at').count()
-    placement_answers = u.semester.course.algorithm_skill_level_placement_answers
+    placement_answers = Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS
     if number_of_answered_problems < placement_answers:
         coefficient = placement_answers + 1 - number_of_answered_problems
     else:
@@ -60,31 +105,49 @@ def get_skill_level_placement_coefficient(u: UserCurrentProgress) -> float:
     return coefficient
 
 
-def add_points_to_topic(u: UserCurrentProgress, topic: Topic,
+def add_points_for_problem(user: User, semester: Semester, problem: Problem):
+    """Добавляет баллы во все темы задания."""
+    points = POINTS_BY_DIFFICULTY[Difficulty(problem.difficulty)]
+    sub_topic_points = points * Constants.SUB_TOPIC_POINTS_COEFFICIENT
+    add_points_to_topic(user, semester, problem.main_topic, problem, points)
+    for topic in problem.sub_topics.all():
+        add_points_to_topic(user, semester, topic, problem, sub_topic_points)
+
+
+def add_points_to_topic(user: User, semester: Semester, topic: Topic,
                         problem: Problem, points: float):
     """Добавляет баллы в тему задания."""
     topic_progress = Progress.objects.filter(
-        user=u.user,
-        semester=u.semester,
+        user=user,
+        semester=semester,
         topic=topic
     ).first()
     if topic_progress is None:
-        raise ValueError(f'Прогресс пользователя {u.user}'
+        raise ValueError(f'Прогресс пользователя {user}'
                          f' по теме {topic} ({topic.id}) не найден.')
     if problem.type in THEORY_TYPES:
-        add_points(topic_progress.theory, points)
+        add_theory_points(topic_progress, points)
     elif problem.type in PRACTICE_TYPES:
-        add_points(topic_progress.practice, points)
+        add_practice_points(topic_progress, points)
     else:
         raise ValueError(f'Тип {problem.type} задания {problem}'
                          f' не относится к теоретическим или'
                          f' практическим типам.')
 
 
-def add_points(progress: AbstractProgress, points: float):
-    """Добавляет баллы в прогресс пользователя по текущей теме."""
-    if progress.points + points > progress.max:
-        progress.points = progress.max
+def add_theory_points(progress: Progress, points: float):
+    """Добавляет баллы в прогресс пользователя по теории."""
+    if progress.theory_points + points > Constants.TOPIC_THEORY_MAX_POINTS:
+        progress.theory_points = Constants.TOPIC_THEORY_MAX_POINTS
     else:
-        progress.points = progress.points + points
+        progress.theory_points += points
+    progress.save()
+
+
+def add_practice_points(progress: Progress, points: float):
+    """Добавляет баллы в прогресс пользователя по практике."""
+    if progress.practice_points + points > Constants.TOPIC_PRACTICE_MAX_POINTS:
+        progress.practice_points = Constants.TOPIC_PRACTICE_MAX_POINTS
+    else:
+        progress.practice_points += points
     progress.save()

@@ -1,64 +1,105 @@
 import math
 
+from django.contrib.auth.models import User
 from django.db.models import QuerySet, Q
 
-from algorithm.models import UserCurrentProgress
-from courses.models import Course, Difficulty, Type, Problem
+from algorithm.models import Progress, UserAnswer
+from config.settings import Constants
+from courses.models import Difficulty, Problem, THEORY_TYPES, PRACTICE_TYPES, Semester, Topic
+
+DIFFICULTY_COEFFICIENT = {
+    Difficulty.EASY: Constants.ALGORITHM_DIFFICULTY_COEFFICIENT_EASY,
+    Difficulty.NORMAL: Constants.ALGORITHM_DIFFICULTY_COEFFICIENT_NORMAL,
+    Difficulty.HARD: Constants.ALGORITHM_DIFFICULTY_COEFFICIENT_HARD
+}
 
 
-def find_problem(u: UserCurrentProgress, types: list[Type]) -> Problem:
-    """Возвращает наиболее сложное задание из всех доступных заданий
-    с использованием логистической модели Раша.
+def filter_theory_problems(progress: Progress) -> QuerySet[Problem]:
+    """Возвращает теоретические задания, доступные для текущей темы пользователя
+    упорядоченные в порядке убывания сложности.
     """
-    difficulty = get_suitable_problem_difficulty(u)
-    problem = filter_problems(u, difficulty, types).first()
-    return problem
+    difficulty = get_suitable_problem_difficulty(progress.skill_level)
+    problems = filter_problems(progress.user, progress.semester, difficulty).filter(
+        main_topic=progress.topic,
+        type__in=THEORY_TYPES
+    ).order_by('-difficulty')
+    return problems
 
 
-def filter_problems(u: UserCurrentProgress,
-                    max_difficulty: Difficulty, types: list[Type]) -> QuerySet[Problem]:
-    """Возвращает теоретические задания, доступные для текущего пользователя
-    в порядке убывания сложности.
+def filter_practice_problems(user: User, semester: Semester) -> QuerySet[Problem]:
+    """Возвращает практические задания, доступные для текущего пользователя
+    упорядоченные в порядке убывания сложности.
     """
-    threshold_low = get_theory_threshold_low(u.progress.topic.module.course)
+    available_progresses = Progress.objects.filter(
+        user=user,
+        theory_points__gte=get_theory_threshold_low(),
+        practice_points__lt=Constants.TOPIC_PRACTICE_MAX_POINTS,
+        semester=semester
+    )
+    if not available_progresses:
+        raise NotImplementedError('Необходимо завершить тест'
+                                  ' по теории хотя бы по одной теме.')
+    problems = Problem.objects.none()
+    for progress in available_progresses:
+        problems |= filter_problems(
+            user,
+            semester,
+            get_suitable_problem_difficulty(progress.skill_level)
+        ).filter(
+            main_topic=progress.topic,
+            type__in=PRACTICE_TYPES
+        )
+    return problems
+
+
+def filter_problems(user: User, semester: Semester, max_difficulty: Difficulty) -> QuerySet[Problem]:
+    """Возвращает теоретические и практические задания, доступные для текущего пользователя
+    упорядоченные в порядке убывания сложности.
+    """
+    threshold_low = get_theory_threshold_low()
+    topics_with_completed_theory = Topic.objects.filter(
+        progress__user=user,
+        progress__theory_points__gte=threshold_low,
+        progress__semester=semester
+    )
     problems = Problem.objects.filter(
-        ~Q(useranswer__user=u.user),
-        Q(sub_topics__progress__user=u.user) and (
-                Q(sub_topics__theoryprogress__points__gte=threshold_low) or Q(sub_topics__isnull=True)),
-        type__in=types,
-        main_topic=u.progress.topic,
+        ~Q(useranswer__user=user),
+        Q(sub_topics__isnull=True) | Q(sub_topics__in=topics_with_completed_theory),
         difficulty__lte=max_difficulty,
     ).order_by('-difficulty')
     return problems
 
 
-def get_theory_threshold_low(course: Course) -> float:
+def get_theory_threshold_low() -> float:
     """Возвращает минимальное количество баллов, необходимое для завершения
     теории по теме.
     """
-    topic_max_points = course.topic_max_points
-    threshold_low = course.topic_threshold_low
-    low = course.topic_theory_max_points * (threshold_low / topic_max_points)
+    topic_max_points = Constants.TOPIC_THEORY_MAX_POINTS + Constants.TOPIC_PRACTICE_MAX_POINTS
+    low = Constants.TOPIC_THEORY_MAX_POINTS * (Constants.TOPIC_THRESHOLD_LOW / topic_max_points)
     return low
 
 
-def get_suitable_problem_difficulty(u: UserCurrentProgress) -> Difficulty:
-    """Возвращает уровень сложности теоретического задания,
-    подходящий для текущей темы студента.
-    """
-    probability = u.semester.course.algorithm_suitable_difficulty_probability
-    if correct_answer_probability(u, Difficulty.HARD) >= probability:
+def get_suitable_problem_difficulty(skill_level: float) -> Difficulty:
+    """Возвращает уровень сложности задания, подходящий по уровню знаний студента."""
+    probability = Constants.ALGORITHM_SUITABLE_DIFFICULTY_PROBABILITY
+    if correct_answer_probability(skill_level, Difficulty.HARD) >= probability:
         return Difficulty.HARD
-    if correct_answer_probability(u, Difficulty.NORMAL) >= probability:
+    if correct_answer_probability(skill_level, Difficulty.NORMAL) >= probability:
         return Difficulty.NORMAL
     return Difficulty.EASY
 
 
-def correct_answer_probability(u: UserCurrentProgress, difficulty: Difficulty) -> float:
-    """Рассчитывает вероятность правильного ответа на задание с указанной сложностью."""
-    coefficient = {
-        Difficulty.EASY: u.semester.course.algorithm_difficulty_coefficient_easy,
-        Difficulty.NORMAL: u.semester.course.algorithm_difficulty_coefficient_normal,
-        Difficulty.HARD: u.semester.course.algorithm_difficulty_coefficient_hard
-    }
-    return 1 / (1 + math.exp(-(u.progress.skill_level - coefficient[difficulty])))
+def correct_answer_probability(skill_level: float, difficulty: Difficulty) -> float:
+    """Рассчитывает вероятность правильного ответа пользователем
+    на задание с указанной сложностью.
+    """
+    return 1 / (1 + math.exp(-(skill_level - DIFFICULTY_COEFFICIENT[difficulty])))
+
+
+def get_last_user_answer(user: User, semester: Semester) -> UserAnswer | None:
+    """Возвращает последний ответ пользователя на практическое задание."""
+    return UserAnswer.objects.filter(
+        user=user,
+        semester=semester,
+        problem__type__in=PRACTICE_TYPES
+    ).order_by('-created_at').first()
