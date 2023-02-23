@@ -1,14 +1,7 @@
-from uuid import UUID
-
 from django.contrib.auth.models import User
 
-from algorithm.models import Progress, TheoryProgress, PracticeProgress, UserCurrentProgress
-from algorithm.problem_selector import ProblemSelector
-from courses.models import Semester, Topic
-
-
-def initialize_algorithm() -> ProblemSelector:
-    return ProblemSelector()
+from algorithm.models import Progress, UserWeakestLinkState, WeakestLinkState
+from courses.models import Semester
 
 
 def create_user_progress(semester: Semester, user: User):
@@ -20,21 +13,12 @@ def create_user_progress(semester: Semester, user: User):
                                                topic=topic).first()
             if progress:
                 continue
-            theory_progress = TheoryProgress.objects.create(topic=topic)
-            practice_progress = PracticeProgress.objects.create(topic=topic)
-            Progress.objects.create(user=user,
-                                    semester=semester,
-                                    topic=topic,
-                                    theory=theory_progress,
-                                    practice=practice_progress)
-
-
-def find_user_current_progress(user: User, semester_pk: UUID,
-                               topic_pk: UUID) -> UserCurrentProgress:
-    """Возвращает прогресс пользователя по теме, устанавливая ее как текущую."""
-    topic = Topic.objects.get(pk=topic_pk)
-    progress = Progress.objects.get(user=user, topic=topic, semester__id=semester_pk)
-    current_topic = UserCurrentProgress.objects.get(user=user, semester=progress.semester)
-    current_topic.progress = progress
-    current_topic.save()
-    return current_topic
+            Progress.objects.create(user=user, semester=semester, topic=topic)
+    user_weakest_link_state = UserWeakestLinkState.objects.filter(
+        user=user,
+        semester=semester
+    ).first()
+    if user_weakest_link_state is None:
+        UserWeakestLinkState.objects.create(user=user,
+                                            semester=semester,
+                                            state=WeakestLinkState.NONE)

@@ -1,1 +1,1 @@
-from .problem_selector import ProblemSelector
+from .problem_selector import next_theory_problem, next_practice_problem
