@@ -19,6 +19,9 @@
                 </form>
             {% endif %}
         {% endif %}
+        <form action="{% url 'next_practice_problem' semester.pk %}">
+            <input type="submit" value="Следующее практическое задание"/>
+        </form>
         <p>Модули</p>
         <ol>
             {% for module in semester.course.module_set.all %}
@@ -43,13 +46,13 @@
                                     </td>
                                     <td title="Количество заданий">{{ topic.problem_main_set.count }}</td>
                                 <tr>
-                            {% empty %}
+                                {% empty %}
                                 <p>Нет тем</p>
                             {% endfor %}
                         </table>
                     </div>
                 </li>
-            {% empty %}
+                {% empty %}
                 <p>Нет модулей</p>
             {% endfor %}
         </ol>

@@ -47,6 +47,9 @@ class Constants:
     WEAKEST_LINK_MAX_PROBLEMS_PER_GROUP: int = 3
     WEAKEST_LINK_NUMBER_OF_PROBLEMS_TO_SOLVE: int = 2
 
+    PROBLEM_SIMILARITY_PERCENT: float = 0.66
+    MIN_CORRECT_ANSWER_COEFFICIENT: float = 0.66
+
 
 # Application definition
 

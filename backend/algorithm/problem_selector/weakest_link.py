@@ -57,7 +57,7 @@ def is_problems_similar(problem1: Problem, problem2: Problem) -> bool:
     if problem1.main_topic != problem2.main_topic:
         return False
     intersection = problem1.sub_topics.all().intersection(problem2.sub_topics.all())
-    return intersection.count() / problem1.sub_topics.all().count() > 0.66
+    return intersection.count() / problem1.sub_topics.all().count() > Constants.PROBLEM_SIMILARITY_PERCENT
 
 
 def remove_completed_topics(user: User, semester: Semester, topics: list[Topic]) -> list[Topic]:
@@ -176,6 +176,18 @@ def is_topic_group_completed(user: User, semester: Semester, group_number: int,
         is_solved=is_successful
     )
     return len(solved_problems) == Constants.WEAKEST_LINK_NUMBER_OF_PROBLEMS_TO_SOLVE
+
+
+def check_weakest_link(user: User, semester: Semester, problem: Problem, is_solved: bool):
+    """Проверяет статус алгоритма слабого звена и выполняет операции,
+    соответствующие каждому статусу.
+    """
+    user_weakest_link_state = UserWeakestLinkState.objects.get(user=user, semester=semester)
+    if user_weakest_link_state.state == WeakestLinkState.IN_PROGRESS:
+        weakest_link_in_progress(user, semester, problem, is_solved)
+    user_weakest_link_state.refresh_from_db()
+    if user_weakest_link_state.state == WeakestLinkState.DONE:
+        weakest_link_done(user, semester)
 
 
 def weakest_link_in_progress(user: User, semester: Semester, problem: Problem, is_solved: bool):

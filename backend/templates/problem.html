@@ -9,13 +9,36 @@
 {% block content %}
     <body>
     <h4>Тема: <a href="{% url 'topic' semester.pk problem.main_topic.pk %}">{{ problem.main_topic.title }}</a></h4>
-    <div id="problem" data-problem="{{ problem.id }}">
-        <h3>{{ problem.title }}</h3>
+    <div id="problem" data-problem="{{ problem.id }}" data-semester="{{ semester.pk }}">
+        <h3>{{ problem.title }} ({{ problem.get_difficulty_display }})</h3>
         <p>{{ problem.description }}</p>
+        {% if problem.sub_topics.exists %}
+            <p>Подтемы:
+                {% for sub_topic in problem.sub_topics.all %}
+                    {{ sub_topic }}
+                {% endfor %}
+            </p>
+        {% endif %}
+        {% if is_answered %}
+            Вы уже решали это задание.
+        {% endif %}
         <form id="answer_form" action="">
             {% csrf_token %}
             <div id="answer" data-answer="{{ answer }}"></div>
-            <button id="submit_button" type="submit">Отправить</button>
+            {% if not is_answered %}
+                <button id="submit_button" type="submit">Отправить</button>
+            {% endif %}
         </form>
+    </div>
+    <div>
+        {% if type == 'theory' %}
+            <form action="{% url 'next_theory_problem' semester.pk problem.main_topic.pk %}">
+                <input type="submit" value="Следующее задание"/>
+            </form>
+        {% elif type == 'practice' %}
+            <form action="{% url 'next_practice_problem' semester.pk %}">
+                <input type="submit" value="Следующее задание"/>
+            </form>
+        {% endif %}
     </div>
 {% endblock %}

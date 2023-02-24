@@ -6,7 +6,7 @@ function main() {
 
     document.getElementById('answer_form').addEventListener(
         'submit', function (e) {
-            validateAnswer().then((data) => console.log(JSON.parse(data)));
+            validateAnswer(answerElement).then((data) => console.log(JSON.parse(data)));
             e.preventDefault();
         }
     )
@@ -120,9 +120,11 @@ function getFillInSingleBlankAnswer(answerElement) {
     'problem_id': answerElement.parentElement.parentElement.dataset.problem};
 }
 
-async function validateAnswer() {
+async function validateAnswer(answerElement) {
+    const problemElement = answerElement.parentElement.parentElement;
+    const url = `/semesters/${problemElement.dataset.semester}/problems/${problemElement.dataset.problem}/validate_answer/`;
     const csrf = document.getElementsByName('csrfmiddlewaretoken')[0].value;
-    let response = await fetch('validate_answer/', {
+    let response = await fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 
 from algorithm.models import TopicGraphEdge
 from algorithm.utils import create_user_progress
+from answers.models import MultipleChoiceRadio, MultipleChoiceCheckbox, FillInSingleBlank
 from courses.models import (Course, Semester, Module, Topic, Problem,
                             THEORY_TYPES, Difficulty, Type, PRACTICE_TYPES)
 
@@ -17,6 +18,7 @@ def generate_test_data():
         semester = create_test_semester()
         create_test_topics(semester.course, number_of_topics=10)
         create_problems(semester.course)
+        create_random_answers(semester.course)
     user = User.objects.filter(username='test_user').first()
     if not user:
         user = create_test_user()
@@ -116,3 +118,45 @@ def create_random_topic_graph(topics: list[Topic]):
                 topic2=topic2,
                 weight=random.random()
             )
+
+
+def create_random_answers(course: Course):
+    """Создает случайные ответы на задания."""
+    problems = Problem.objects.filter(main_topic__module__course=course)
+    for problem in problems:
+        match problem.type:
+            case Type.MULTIPLE_CHOICE_RADIO.value:
+                create_random_multiple_choice_radio_answers(problem)
+            case Type.MULTIPLE_CHOICE_CHECKBOX.value:
+                create_random_multiple_choice_checkbox_answers(problem)
+            case Type.FILL_IN_SINGLE_BLANK.value:
+                create_random_fill_in_single_blank_answers(problem)
+            case Type.CODE.value:
+                pass
+            case other_type:
+                raise ValueError(f'Неизвестный тип {other_type}')
+
+
+def create_random_multiple_choice_radio_answers(problem: Problem):
+    """Создает случайные варианты ответа с одним правильным."""
+    correct = random.randint(1, 4)
+    for i in range(1, 5):
+        if i == correct:
+            MultipleChoiceRadio.objects.create(text='True', is_correct=True, problem=problem)
+        else:
+            MultipleChoiceRadio.objects.create(text='False', is_correct=False, problem=problem)
+
+
+def create_random_multiple_choice_checkbox_answers(problem: Problem):
+    """Создает случайные варианты ответа с несколькими правильными (от двух до четырех)."""
+    correct = random.sample([1, 2, 3, 4], random.randint(2, 4))
+    for i in range(1, 5):
+        if i in correct:
+            MultipleChoiceCheckbox.objects.create(text='True', is_correct=True, problem=problem)
+        else:
+            MultipleChoiceCheckbox.objects.create(text='False', is_correct=False, problem=problem)
+
+
+def create_random_fill_in_single_blank_answers(problem: Problem):
+    """Создает верный ответ на задание с типом заполнения пропуска."""
+    FillInSingleBlank.objects.create(text='True', problem=problem)

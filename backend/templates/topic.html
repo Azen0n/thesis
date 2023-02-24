@@ -14,11 +14,15 @@
             <li>
                 <a href="{{ attachment.url }}">{{ attachment.name }}</a>
             </li>
-        {% empty %}
+            {% empty %}
             <p>Нет вложений</p>
         {% endfor %}
     </ul>
-    <p><b>Практические задания</b></p>
+    <form action="{% url 'next_theory_problem' semester.pk topic.pk %}">
+        <input type="submit" value="Следующее теоретическое задание"/>
+    </form>
+    <p>Прогресс по теории: {{ theory_points }}, по практике: {{ practice_points }}</p>
+    <p><b>Задания</b></p>
     <table>
         {% for problem in topic.problem_main_set.all %}
             <tr>
@@ -26,7 +30,7 @@
                 <td><a href="{% url 'problem' semester.pk problem.pk %}">{{ problem.title }}</a></td>
                 <td>{{ problem.difficulty }}</td>
             </tr>
-        {% empty %}
+            {% empty %}
             <p>Нет заданий</p>
         {% endfor %}
     </table>
