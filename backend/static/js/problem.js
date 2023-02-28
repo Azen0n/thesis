@@ -3,10 +3,25 @@ document.addEventListener('DOMContentLoaded', main, false);
 function main() {
     let answerElement = document.getElementById('answer');
     renderAnswer(answerElement);
+    let resultElement = document.getElementById('result');
 
     document.getElementById('answer_form').addEventListener(
         'submit', function (e) {
-            validateAnswer(answerElement).then((data) => console.log(JSON.parse(data)));
+            validateAnswer(answerElement).then(
+                (data) => {
+                    let result = JSON.parse(data);
+                    console.log(result);
+                    let coefficient = result['coefficient'];
+                    if (coefficient === undefined) {
+                        coefficient = result['error'];
+                    }
+                    else {
+                        let submitButton = document.getElementById('submit_button');
+                        submitButton.remove();
+                    }
+                    resultElement.innerHTML = `${coefficient}`;
+                }
+            );
             e.preventDefault();
         }
     )

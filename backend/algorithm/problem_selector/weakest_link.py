@@ -1,15 +1,16 @@
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.db.models import QuerySet
 
-from algorithm.models import (UserAnswer, WeakestLinkProblem,
-                              UserWeakestLinkState, WeakestLinkState, WeakestLinkTopic, Progress)
+from algorithm.models import (UserAnswer, WeakestLinkProblem, UserWeakestLinkState,
+                              WeakestLinkState, WeakestLinkTopic, Progress)
 from algorithm.problem_selector.topic_graph import load_topic_graph
 from algorithm.problem_selector.utils import get_last_user_answer, filter_practice_problems
 from config.settings import Constants
 from courses.models import Problem, Topic, Semester, Difficulty
 
 
-def start_weakest_link_when_ready(user: User, semester: Semester):
+def start_weakest_link_when_ready(user: User, semester: Semester) -> Problem | None:
     """Заполняет очередь слабого звена, если выполнено условие
     на запуск алгоритма из get_practice_problems_for_weakest_link."""
     last_answer = get_last_user_answer(user, semester)
@@ -38,7 +39,7 @@ def get_practice_problems_for_weakest_link(user: User, semester: Semester,
         user=user,
         problem__main_topic=problem.main_topic,
         semester=semester
-    ).order_by('-created_at')
+    ).order_by('-created_at').exclude(problem=problem)
     number_of_solved_similar_problems = 0
     for answer in main_topic_answers:
         if is_problems_similar(problem, answer.problem):
@@ -56,8 +57,10 @@ def is_problems_similar(problem1: Problem, problem2: Problem) -> bool:
     """
     if problem1.main_topic != problem2.main_topic:
         return False
-    intersection = problem1.sub_topics.all().intersection(problem2.sub_topics.all())
-    return intersection.count() / problem1.sub_topics.all().count() > Constants.PROBLEM_SIMILARITY_PERCENT
+    topics1 = get_topics_of_problems(problem1)
+    topics2 = get_topics_of_problems(problem2)
+    intersection = set(topics1).intersection(topics2)
+    return len(intersection) / len(topics1) > Constants.PROBLEM_SIMILARITY_PERCENT
 
 
 def remove_completed_topics(user: User, semester: Semester, topics: list[Topic]) -> list[Topic]:
@@ -66,11 +69,12 @@ def remove_completed_topics(user: User, semester: Semester, topics: list[Topic])
         user=user,
         semester=semester,
         topic__in=topics,
-        practice_points=Constants.TOPIC_PRACTICE_MAX_POINTS
+        practice_points__lt=Constants.TOPIC_PRACTICE_MAX_POINTS
     )
-    return progresses.values_list('topic', flat=True)
+    return Topic.objects.filter(id__in=progresses.values_list('topic', flat=True))
 
 
+@transaction.atomic
 def fill_weakest_link_queue(user: User, semester: Semester,
                             topics: list[Topic], max_difficulty: Difficulty):
     """Находит похожие задания с темами неправильно решенных заданий
@@ -80,24 +84,32 @@ def fill_weakest_link_queue(user: User, semester: Semester,
     topic_graph = load_topic_graph(semester.course)
     topic_groups = topic_graph.split_topics_in_two_groups(topics)
     problems = filter_practice_problems(user, semester)
+    final_topic_groups = []
     for group_number, topic_group in enumerate(topic_groups, start=1):
         group_problems = find_problems_with_topics(topic_group, problems)
         weakest_link_problems = group_problems.filter(
             difficulty__lte=max_difficulty
         )[:Constants.WEAKEST_LINK_MAX_PROBLEMS_PER_GROUP]
+        if not weakest_link_problems:
+            continue
         for problem in weakest_link_problems:
             WeakestLinkProblem.objects.create(user=user, group_number=group_number,
                                               semester=semester, problem=problem)
-    if WeakestLinkProblem.objects.filter(user=user, semester=semester):
-        add_topics_to_weakest_link_queue(user, semester, topic_groups)
+        final_topic_groups.append((group_number, topic_group))
+    if final_topic_groups:
+        add_topics_to_weakest_link_queue(user, semester, final_topic_groups)
+        update_user_weakest_link_state(user, semester, WeakestLinkState.IN_PROGRESS)
     else:
         raise NotImplementedError('Доступные задания с темами группы не найдены.')
 
 
 def add_topics_to_weakest_link_queue(user: User, semester: Semester,
-                                     topic_groups: tuple[list[Topic], list[Topic]]):
-    """Добавляет потенциально проблемные темы в очередь слабого звена."""
-    for group_number, topic_group in enumerate(topic_groups):
+                                     topic_groups: list[tuple[int, list[Topic]]]):
+    """Добавляет потенциально проблемные темы в очередь слабого звена.
+
+    topic_groups — список кортежей из номера группы и списка тем этой группы.
+    """
+    for group_number, topic_group in topic_groups:
         for topic in topic_group:
             WeakestLinkTopic.objects.create(
                 user=user,
@@ -123,13 +135,11 @@ def find_problems_with_topics(topics: list[Topic],
 
     problems — доступные для пользователя задания.
     """
-    problems = problems.filter(main_topic__in=topics, sub_topics__in=topics)
-    if len(problems) < Constants.WEAKEST_LINK_MAX_PROBLEMS_PER_GROUP:
-        problems |= problems.filter(main_topic__in=topics)
-        problems = problems.distinct()
-    if not problems:
-        raise NotImplementedError('Доступные задания с темами группы не найдены.')
-    return problems.order_by('-difficulty')
+    filtered_problems = problems.filter(main_topic__in=topics, sub_topics__in=topics)
+    if len(filtered_problems) < Constants.WEAKEST_LINK_MAX_PROBLEMS_PER_GROUP:
+        filtered_problems |= problems.filter(main_topic__in=topics)
+        filtered_problems = filtered_problems.distinct()
+    return filtered_problems.order_by('-difficulty')
 
 
 def change_weakest_link_problem_is_solved(user: User, semester: Semester, problem: Problem,
@@ -178,9 +188,10 @@ def is_topic_group_completed(user: User, semester: Semester, group_number: int,
     return len(solved_problems) == Constants.WEAKEST_LINK_NUMBER_OF_PROBLEMS_TO_SOLVE
 
 
-def check_weakest_link(user: User, semester: Semester, problem: Problem, is_solved: bool):
+def check_weakest_link(user: User, semester: Semester, problem: Problem, is_solved: bool) -> bool:
     """Проверяет статус алгоритма слабого звена и выполняет операции,
-    соответствующие каждому статусу.
+    соответствующие каждому статусу. Возвращает True, когда алгоритм заканчивается,
+    в противном случае False.
     """
     user_weakest_link_state = UserWeakestLinkState.objects.get(user=user, semester=semester)
     if user_weakest_link_state.state == WeakestLinkState.IN_PROGRESS:
@@ -188,6 +199,8 @@ def check_weakest_link(user: User, semester: Semester, problem: Problem, is_solv
     user_weakest_link_state.refresh_from_db()
     if user_weakest_link_state.state == WeakestLinkState.DONE:
         weakest_link_done(user, semester)
+        return True
+    return False
 
 
 def weakest_link_in_progress(user: User, semester: Semester, problem: Problem, is_solved: bool):
@@ -205,7 +218,7 @@ def weakest_link_done(user: User, semester: Semester):
     """Понижает уровень знаний по проблемным темам, определенным поиском слабого звена,
     удаляет темы из очереди и меняет статус алгоритма на None.
     """
-    topics = WeakestLinkTopic.objects.filter(user=user, semester=semester)
+    topics = WeakestLinkTopic.objects.filter(user=user, semester=semester).values_list('topic', flat=True)
     decrease_user_skill_level_after_weakest_link(user, semester, topics)
     WeakestLinkTopic.objects.filter(user=user, semester=semester, topic__in=topics).delete()
     update_user_weakest_link_state(user, semester, WeakestLinkState.NONE)
@@ -217,3 +230,23 @@ def decrease_user_skill_level_after_weakest_link(user: User, semester: Semester,
         progress = Progress.objects.get(user=user, semester=semester, topic=topic)
         progress.skill_level -= Constants.ALGORITHM_WRONG_ANSWER_PENALTY * 2
         progress.save()
+
+
+def stop_weakest_link_when_practice_completed(user: User, semester: Semester):
+    """Проверяет, завершены ли темы в списке проблемных тем. Если хотя бы
+    по одной теме завершена практика, алгоритм поиска слабого звена прерывается.
+    """
+    user_weakest_link_state = UserWeakestLinkState.objects.get(user=user, semester=semester)
+    if user_weakest_link_state.state == WeakestLinkState.IN_PROGRESS:
+        weakest_link_topics = WeakestLinkTopic.objects.filter(user=user, semester=semester)
+        progresses = Progress.objects.filter(
+            user=user,
+            semester=semester,
+            topic__in=weakest_link_topics.values_list('topic', flat=True)
+        )
+        for progress in progresses:
+            if progress.is_practice_completed():
+                WeakestLinkTopic.objects.filter(user=user, semester=semester).delete()
+                WeakestLinkProblem.objects.filter(user=user, semester=semester).delete()
+                update_user_weakest_link_state(user, semester, WeakestLinkState.NONE)
+                return

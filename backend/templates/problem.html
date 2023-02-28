@@ -25,10 +25,11 @@
         <form id="answer_form" action="">
             {% csrf_token %}
             <div id="answer" data-answer="{{ answer }}"></div>
-            {% if not is_answered %}
+            {% if not is_answered and not is_topic_completed %}
                 <button id="submit_button" type="submit">Отправить</button>
             {% endif %}
         </form>
+        <div id="result"></div>
     </div>
     <div>
         {% if type == 'theory' %}

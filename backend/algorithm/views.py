@@ -25,7 +25,7 @@ def next_theory_problem(request: HttpRequest,
                         semester_pk: UUID, topic_pk: UUID) -> HttpResponse:
     """Подбирает следующее теоретическое задание по теме."""
     if not request.user.is_authenticated:
-        return HttpResponse('Unauthorized', status=401)
+        return render(request, 'error.html', {'message': 'Войдите в систему.'}, status=401)
     try:
         progress = Progress.objects.get(user=request.user,
                                         semester_id=semester_pk,
@@ -40,16 +40,16 @@ def next_theory_problem(request: HttpRequest,
         }
         return render(request, 'problem.html', context)
     except ObjectDoesNotExist:
-        return HttpResponse('Не найдено', status=404)
+        return render(request, 'error.html', {'message': 'Страница не найдена.'}, status=404)
     except NotImplementedError as e:
-        return HttpResponse(f'{e}')
+        return render(request, 'error.html', {'message': f'{e}'})
 
 
 def next_practice_problem(request: HttpRequest,
                           semester_pk: UUID) -> HttpResponse:
     """Подбирает следующее теоретическое задание по теме."""
     if not request.user.is_authenticated:
-        return HttpResponse('Unauthorized', status=401)
+        return render(request, 'error.html', {'message': 'Войдите в систему.'}, status=401)
     try:
         semester = Semester.objects.get(pk=semester_pk)
         problem = get_next_practice_problem(request.user, semester)
@@ -62,6 +62,6 @@ def next_practice_problem(request: HttpRequest,
         }
         return render(request, 'problem.html', context)
     except ObjectDoesNotExist:
-        return HttpResponse('Не найдено', status=404)
+        return render(request, 'error.html', {'message': 'Страница не найдена.'}, status=404)
     except NotImplementedError as e:
-        return HttpResponse(f'{e}')
+        return render(request, 'error.html', {'message': f'{e}'})

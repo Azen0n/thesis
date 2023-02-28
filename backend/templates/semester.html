@@ -24,27 +24,32 @@
         </form>
         <p>Модули</p>
         <ol>
-            {% for module in semester.course.module_set.all %}
+            {% for module in modules %}
                 <li>
                     <div>
-                        <span title="Обязательный">{% if module.is_required %}*{% endif %}</span>
-                        <span>{{ module.title }}</span>
-                        <p><b>Описание</b><br>{{ module.description }}</p>
-                        <span style="margin-right: 10px">{{ module.topic_set.count }} тем</span>
-                        <span style="margin-right: 10px">{{ module.problem_count }} практических заданий</span>
-                        <span>{{ module.total_time }} ч</span>
+                        <span title="Обязательный">{% if module.module.is_required %}*{% endif %}</span>
+                        <span>{{ module.module.title }}</span>
+                        <p><b>Описание</b><br>{{ module.module.description }}</p>
+                        <span style="margin-right: 10px">{{ module.module.topic_set.count }} тем</span>
+                        <span>{{ module.module.total_time }} ч</span>
                         <p><b>Темы</b></p>
                         <table>
-                            {% for topic in module.topic_set.all %}
+                            {% for topic in module.topics %}
                                 <tr>
-                                    <td>{{ forloop.counter }}. <span title="Обязательный">{% if module.is_required %}
+                                    <td>{{ forloop.counter }}. <span title="Обязательный">{% if topic.topic.is_required %}
                                         *{% endif %}</span></td>
                                     <td style="padding-right: 20px"><a
-                                            href="{% url 'topic' semester.pk topic.pk %}">{{ topic.title }}</a></td>
-                                    <td style="padding-right: 20px" title="Время на завершение">
-                                        {{ topic.time_to_complete }} ч
+                                            href="{% url 'topic' semester.pk topic.topic.pk %}">{{ topic.topic.title }}</a>
                                     </td>
-                                    <td title="Количество заданий">{{ topic.problem_main_set.count }}</td>
+                                    <td style="padding-right: 20px" title="Время на завершение">
+                                        {{ topic.topic.time_to_complete }} ч
+                                    </td>
+                                    <td style="padding-right: 20px" title="Количество баллов по теории">
+                                        {{ topic.progress.theory_points|floatformat:2 }}
+                                    </td>
+                                    <td style="padding-right: 20px" title="Количество баллов по практике">
+                                        {{ topic.progress.practice_points|floatformat:2 }}
+                                    </td>
                                 <tr>
                                 {% empty %}
                                 <p>Нет тем</p>

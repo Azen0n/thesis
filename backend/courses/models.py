@@ -65,6 +65,7 @@ class Topic(models.Model):
     time_to_complete = models.IntegerField()
     is_required = models.BooleanField(default=False)
     module = models.ForeignKey(Module, on_delete=models.CASCADE)
+    parent_topic = models.ForeignKey('Topic', blank=True, null=True, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -104,11 +105,10 @@ class Type(models.TextChoices):
 THEORY_TYPES = [
     Type.MULTIPLE_CHOICE_RADIO,
     Type.MULTIPLE_CHOICE_CHECKBOX,
-    Type.FILL_IN_SINGLE_BLANK,
 ]
 
 PRACTICE_TYPES = [
-    Type.CODE,
+    Type.FILL_IN_SINGLE_BLANK,
 ]
 
 

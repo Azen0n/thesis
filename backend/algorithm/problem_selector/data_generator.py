@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from algorithm.models import TopicGraphEdge
 from algorithm.utils import create_user_progress
 from answers.models import MultipleChoiceRadio, MultipleChoiceCheckbox, FillInSingleBlank
+from config.settings import Constants
 from courses.models import (Course, Semester, Module, Topic, Problem,
                             THEORY_TYPES, Difficulty, Type, PRACTICE_TYPES)
 
@@ -19,6 +20,7 @@ def generate_test_data():
         create_test_topics(semester.course, number_of_topics=10)
         create_problems(semester.course)
         create_random_answers(semester.course)
+        create_random_topic_graph(Topic.objects.filter(module__course=semester.course))
     user = User.objects.filter(username='test_user').first()
     if not user:
         user = create_test_user()
@@ -56,14 +58,17 @@ def create_test_topics(course: Course, number_of_topics: int = 10):
         is_required=True,
         course=course
     )
+    parent_topic = None
     for i in range(number_of_topics):
         topic = Topic.objects.create(
             title=f'Topic {i + 1}',
             time_to_complete=5,
             is_required=False,
-            module=module
+            module=module,
+            parent_topic=parent_topic
         )
         module.topic_set.add(topic)
+        parent_topic = topic
 
 
 def create_problems(course: Course,
@@ -98,9 +103,13 @@ def create_problem(problem_title: str, topic: Topic,
                                   Difficulty.HARD]),
         main_topic=topic
     )
+    if len(available_sub_topics) > Constants.MAX_NUMBER_OF_SUB_TOPICS:
+        max_number_of_sub_topics = Constants.MAX_NUMBER_OF_SUB_TOPICS
+    else:
+        max_number_of_sub_topics = len(available_sub_topics)
     if available_sub_topics:
-        sub_topics = random.choices(available_sub_topics,
-                                    k=random.randint(0, 2))
+        sub_topics = random.sample(available_sub_topics,
+                                   k=random.randint(0, max_number_of_sub_topics))
         if sub_topics:
             problem.sub_topics.add(*sub_topics)
 

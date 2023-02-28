@@ -12,10 +12,10 @@ POINTS_BY_DIFFICULTY = {
 }
 
 
-def add_points_for_problem(user: User, semester: Semester, problem: Problem):
+def add_points_for_problem(user: User, semester: Semester, problem: Problem, coefficient: float):
     """Добавляет баллы во все темы задания."""
-    points = POINTS_BY_DIFFICULTY[Difficulty(problem.difficulty)]
-    sub_topic_points = points * Constants.SUB_TOPIC_POINTS_COEFFICIENT
+    points = coefficient * POINTS_BY_DIFFICULTY[Difficulty(problem.difficulty)]
+    sub_topic_points = coefficient * points * Constants.SUB_TOPIC_POINTS_COEFFICIENT
     add_points_to_topic(user, semester, problem.main_topic, problem, points)
     for topic in problem.sub_topics.all():
         add_points_to_topic(user, semester, topic, problem, sub_topic_points)
