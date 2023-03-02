@@ -5,6 +5,6 @@ import answers.models as answers_models
 answers = [answers_models.MultipleChoiceRadio,
            answers_models.MultipleChoiceCheckbox,
            answers_models.FillInSingleBlank,
-           answers_models.FillInSingleBlankOption]
+           answers_models.Answer]
 
 admin.site.register(answers)
