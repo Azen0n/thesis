@@ -119,6 +119,7 @@ class Problem(models.Model):
     description = models.TextField()
     type = models.CharField(max_length=100, choices=Type.choices)
     difficulty = models.IntegerField(choices=Difficulty.choices)
+    time_to_solve_in_seconds = models.FloatField()
     main_topic = models.ForeignKey(Topic, on_delete=models.CASCADE,
                                    related_name='problem_main_set')
     sub_topics = models.ManyToManyField(Topic, related_name='problem_sub_set',

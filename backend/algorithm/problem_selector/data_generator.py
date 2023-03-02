@@ -94,24 +94,45 @@ def create_problem(problem_title: str, topic: Topic,
                    available_sub_topics: list[Topic],
                    types: list[Type]):
     """Создает задание со случайными подтемами."""
+    number_of_sub_topics = generate_number_of_sub_topics(len(available_sub_topics))
+    difficulty = random.choice([Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD])
+    time_to_solve_in_seconds = generate_time_to_solve_in_seconds(types, difficulty,
+                                                                 number_of_sub_topics)
     problem = Problem.objects.create(
         title=problem_title,
         description='Lorem Ipsum',
         type=random.choice(types),
-        difficulty=random.choice([Difficulty.EASY,
-                                  Difficulty.NORMAL,
-                                  Difficulty.HARD]),
+        difficulty=difficulty,
+        time_to_solve_in_seconds=time_to_solve_in_seconds,
         main_topic=topic
     )
-    if len(available_sub_topics) > Constants.MAX_NUMBER_OF_SUB_TOPICS:
-        max_number_of_sub_topics = Constants.MAX_NUMBER_OF_SUB_TOPICS
-    else:
-        max_number_of_sub_topics = len(available_sub_topics)
     if available_sub_topics:
-        sub_topics = random.sample(available_sub_topics,
-                                   k=random.randint(0, max_number_of_sub_topics))
+        sub_topics = random.sample(available_sub_topics, k=number_of_sub_topics)
         if sub_topics:
             problem.sub_topics.add(*sub_topics)
+
+
+def generate_time_to_solve_in_seconds(types: list[Type], difficulty: Difficulty,
+                                      number_of_sub_topics: int) -> float:
+    """Возвращает количество секунд на решение задания."""
+    if types == THEORY_TYPES:
+        time_to_solve_in_seconds = random.randint(1, 5) + (
+                100 * difficulty.value - 100) + 10 * (1 + number_of_sub_topics)
+    elif types == PRACTICE_TYPES:
+        time_to_solve_in_seconds = random.randint(1, 5) * 5 + (
+                500 * difficulty.value - 200) + 10 * (1 + number_of_sub_topics)
+    else:
+        raise ValueError(f'Неизвестные типы заданий: {", ".join(types)}.')
+    return time_to_solve_in_seconds
+
+
+def generate_number_of_sub_topics(number_of_available_sub_topics: int) -> int:
+    """Возвращает случайное количество подтем."""
+    if number_of_available_sub_topics > Constants.MAX_NUMBER_OF_SUB_TOPICS:
+        max_number_of_sub_topics = Constants.MAX_NUMBER_OF_SUB_TOPICS
+    else:
+        max_number_of_sub_topics = number_of_available_sub_topics
+    return random.randint(0, max_number_of_sub_topics)
 
 
 def create_random_topic_graph(topics: list[Topic]):
