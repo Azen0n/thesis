@@ -35,7 +35,9 @@ class Progress(AbstractUserSemester):
         return self.theory_points + self.practice_points
 
     def is_theory_low_reached(self) -> bool:
-        return self.theory_points >= Constants.TOPIC_THRESHOLD_LOW
+        max_points = Constants.TOPIC_THEORY_MAX_POINTS + Constants.TOPIC_PRACTICE_MAX_POINTS
+        theory_low_coefficient = Constants.TOPIC_THRESHOLD_LOW / max_points
+        return self.theory_points >= Constants.TOPIC_THEORY_MAX_POINTS * theory_low_coefficient
 
     def is_theory_completed(self) -> bool:
         return self.theory_points >= Constants.TOPIC_THEORY_MAX_POINTS
@@ -52,7 +54,6 @@ class Progress(AbstractUserSemester):
 class UserAnswer(AbstractUserSemester):
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
     is_solved = models.BooleanField()
-    answer = models.ForeignKey(Answer, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

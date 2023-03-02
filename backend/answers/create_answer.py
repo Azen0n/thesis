@@ -1,41 +1,33 @@
 from django.contrib.auth.models import User
 from django.db import transaction
 
-from algorithm.models import (UserAnswer, Progress, WeakestLinkState,
-                              UserWeakestLinkState)
-from algorithm.problem_selector.weakest_link import (weakest_link_in_progress,
-                                                     weakest_link_done)
+from algorithm.models import UserAnswer, Progress, UserWeakestLinkState, WeakestLinkState
+from algorithm.problem_selector.weakest_link import (check_weakest_link,
+                                                     start_weakest_link_when_ready,
+                                                     stop_weakest_link_when_practice_completed)
 from config.settings import Constants
-from .models import Answer
-from courses.models import (Problem, THEORY_TYPES, PRACTICE_TYPES,
-                            Difficulty, Topic, Semester)
-
-POINTS_BY_DIFFICULTY = {
-    Difficulty.EASY: Constants.POINTS_EASY,
-    Difficulty.NORMAL: Constants.POINTS_NORMAL,
-    Difficulty.HARD: Constants.POINTS_HARD,
-}
+from .models import Answer, MultipleChoiceRadio, MultipleChoiceCheckbox
+from courses.models import Problem, Semester, PRACTICE_TYPES, Type
+from .points_management import add_points_for_problem
 
 
 @transaction.atomic
 def create_user_answer(user: User, semester: Semester, problem: Problem,
-                       is_solved: bool):
+                       coefficient: float, answer: MultipleChoiceRadio | list[MultipleChoiceCheckbox] | str):
     """Создает ответ пользователя на задание и добавляет баллы в его
     главную тему и подтемы.
     """
-    user_weakest_link_state = UserWeakestLinkState.objects.get(user=user, semester=semester)
-    if user_weakest_link_state.state == WeakestLinkState.IN_PROGRESS:
-        weakest_link_in_progress(user, semester, problem, is_solved)
-    user_weakest_link_state.refresh_from_db()
-    if user_weakest_link_state.state == WeakestLinkState.DONE:
-        weakest_link_done(user, semester)
-    UserAnswer.objects.create(
+    is_solved = coefficient >= Constants.MIN_CORRECT_ANSWER_COEFFICIENT
+    is_weakest_link_done = False
+    if problem.type in PRACTICE_TYPES:
+        is_weakest_link_done = check_weakest_link(user, semester, problem, is_solved)
+    user_answer = UserAnswer.objects.create(
         user=user,
         semester=semester,
         problem=problem,
-        is_solved=is_solved,
-        answer=Answer.objects.create(),
+        is_solved=is_solved
     )
+    create_entered_user_answers(problem.type, answer, user_answer)
     progress = Progress.objects.filter(
         user=user,
         semester=semester,
@@ -43,7 +35,29 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
     ).first()
     change_user_skill_level(progress, is_solved)
     if is_solved:
-        add_points_for_problem(user, semester, problem)
+        add_points_for_problem(user, semester, problem, coefficient)
+    user_weakest_link_state = UserWeakestLinkState.objects.get(user=user, semester=semester)
+    if user_weakest_link_state.state == WeakestLinkState.NONE and not is_weakest_link_done:
+        start_weakest_link_when_ready(user, semester)
+    stop_weakest_link_when_practice_completed(user, semester)
+
+
+def create_entered_user_answers(problem_type: str,
+                                answer: MultipleChoiceRadio | list[MultipleChoiceCheckbox] | str,
+                                user_answer: UserAnswer):
+    """Создает список Answer с выбранными/введенными ответами пользователя."""
+    match problem_type:
+        case Type.MULTIPLE_CHOICE_RADIO.value:
+            Answer.objects.create(multiple_choice_radio=answer, user_answer=user_answer)
+        case Type.MULTIPLE_CHOICE_CHECKBOX.value:
+            for ans in answer:
+                Answer.objects.create(multiple_choice_checkbox=ans, user_answer=user_answer)
+        case Type.FILL_IN_SINGLE_BLANK.value:
+            Answer.objects.create(fill_in_single_blank=answer, user_answer=user_answer)
+        case Type.CODE.value:
+            raise NotImplementedError('Проверки практических заданий нет.')
+        case other_type:
+            raise ValueError(f'Неизвестный тип {other_type}.')
 
 
 def change_user_skill_level(progress: Progress, is_solved: bool):
@@ -73,51 +87,3 @@ def get_skill_level_placement_coefficient(progress: Progress) -> float:
     else:
         coefficient = 1
     return coefficient
-
-
-def add_points_for_problem(user: User, semester: Semester, problem: Problem):
-    """Добавляет баллы во все темы задания."""
-    points = POINTS_BY_DIFFICULTY[Difficulty(problem.difficulty)]
-    sub_topic_points = points * Constants.SUB_TOPIC_POINTS_COEFFICIENT
-    add_points_to_topic(user, semester, problem.main_topic, problem, points)
-    for topic in problem.sub_topics.all():
-        add_points_to_topic(user, semester, topic, problem, sub_topic_points)
-
-
-def add_points_to_topic(user: User, semester: Semester, topic: Topic,
-                        problem: Problem, points: float):
-    """Добавляет баллы в тему задания."""
-    topic_progress = Progress.objects.filter(
-        user=user,
-        semester=semester,
-        topic=topic
-    ).first()
-    if topic_progress is None:
-        raise ValueError(f'Прогресс пользователя {user}'
-                         f' по теме {topic} ({topic.id}) не найден.')
-    if problem.type in THEORY_TYPES:
-        add_theory_points(topic_progress, points)
-    elif problem.type in PRACTICE_TYPES:
-        add_practice_points(topic_progress, points)
-    else:
-        raise ValueError(f'Тип {problem.type} задания {problem}'
-                         f' не относится к теоретическим или'
-                         f' практическим типам.')
-
-
-def add_theory_points(progress: Progress, points: float):
-    """Добавляет баллы в прогресс пользователя по теории."""
-    if progress.theory_points + points > Constants.TOPIC_THEORY_MAX_POINTS:
-        progress.theory_points = Constants.TOPIC_THEORY_MAX_POINTS
-    else:
-        progress.theory_points += points
-    progress.save()
-
-
-def add_practice_points(progress: Progress, points: float):
-    """Добавляет баллы в прогресс пользователя по практике."""
-    if progress.practice_points + points > Constants.TOPIC_PRACTICE_MAX_POINTS:
-        progress.practice_points = Constants.TOPIC_PRACTICE_MAX_POINTS
-    else:
-        progress.practice_points += points
-    progress.save()

@@ -5,13 +5,26 @@ from django.db.models import QuerySet, Q
 
 from algorithm.models import UserAnswer, Progress
 from config.settings import Constants
-from courses.models import Difficulty, PRACTICE_TYPES, Semester, Problem, Topic
+from courses.models import (Difficulty, THEORY_TYPES, PRACTICE_TYPES, Semester,
+                            Problem, Topic)
 
 DIFFICULTY_COEFFICIENT = {
     Difficulty.EASY: Constants.ALGORITHM_DIFFICULTY_COEFFICIENT_EASY,
     Difficulty.NORMAL: Constants.ALGORITHM_DIFFICULTY_COEFFICIENT_NORMAL,
     Difficulty.HARD: Constants.ALGORITHM_DIFFICULTY_COEFFICIENT_HARD
 }
+
+
+def filter_theory_problems(progress: Progress) -> QuerySet[Problem]:
+    """Возвращает теоретические задания, доступные для текущей темы пользователя
+    упорядоченные в порядке убывания сложности.
+    """
+    difficulty = get_suitable_problem_difficulty(progress.skill_level)
+    problems = filter_problems(progress.user, progress.semester, difficulty).filter(
+        main_topic=progress.topic,
+        type__in=THEORY_TYPES
+    ).order_by('-difficulty')
+    return problems
 
 
 def filter_practice_problems(user: User, semester: Semester) -> QuerySet[Problem]:
@@ -91,3 +104,17 @@ def get_last_user_answer(user: User, semester: Semester) -> UserAnswer | None:
         semester=semester,
         problem__type__in=PRACTICE_TYPES
     ).order_by('-created_at').first()
+
+
+def filter_wrongly_answered_theory_problems(progress: Progress) -> QuerySet[Problem]:
+    """Возвращает неправильно решенные задания по теме."""
+    difficulty = get_suitable_problem_difficulty(progress.skill_level)
+    solved_problems = UserAnswer.objects.filter(
+        user=progress.user,
+        semester=progress.semester,
+        problem__type__in=THEORY_TYPES,
+        problem__main_topic=progress.topic,
+        problem__difficulty_lte=difficulty,
+        is_solved=False
+    ).order_by('-difficulty')
+    return solved_problems

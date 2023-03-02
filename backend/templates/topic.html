@@ -5,7 +5,7 @@
 {% block content %}
     <h3>
         <span title="Обязательный">{% if topic.is_required %}*{% endif %}</span>
-        {{ topic.title }}
+        <a href="{% url 'semester' semester.pk %}">{{ semester.course.title }}</a> > {{ topic.title }}
     </h3>
     <p>{{ topic.time_to_complete }} ч</p>
     <p><b>Теоретический материал</b></p>
@@ -14,11 +14,15 @@
             <li>
                 <a href="{{ attachment.url }}">{{ attachment.name }}</a>
             </li>
-        {% empty %}
+            {% empty %}
             <p>Нет вложений</p>
         {% endfor %}
     </ul>
-    <p><b>Практические задания</b></p>
+    <form action="{% url 'next_theory_problem' semester.pk topic.pk %}">
+        <input type="submit" value="Следующее теоретическое задание"/>
+    </form>
+    <p>Прогресс по теории: {{ theory_points|floatformat:2 }}, по практике: {{ practice_points|floatformat:2 }}</p>
+    <p><b>Задания</b></p>
     <table>
         {% for problem in topic.problem_main_set.all %}
             <tr>
@@ -26,7 +30,7 @@
                 <td><a href="{% url 'problem' semester.pk problem.pk %}">{{ problem.title }}</a></td>
                 <td>{{ problem.difficulty }}</td>
             </tr>
-        {% empty %}
+            {% empty %}
             <p>Нет заданий</p>
         {% endfor %}
     </table>

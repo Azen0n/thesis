@@ -3,19 +3,30 @@ document.addEventListener('DOMContentLoaded', main, false);
 function main() {
     let answerElement = document.getElementById('answer');
     renderAnswer(answerElement);
+    let resultElement = document.getElementById('result');
 
     document.getElementById('answer_form').addEventListener(
-        "submit", function (e) {
-            validateAnswer().then((data) => console.log(JSON.parse(data)));
+        'submit', function (e) {
+            validateAnswer(answerElement).then(
+                (data) => {
+                    let result = JSON.parse(data);
+                    console.log(result);
+                    let coefficient = result['coefficient'];
+                    if (coefficient === undefined) {
+                        coefficient = result['error'];
+                    }
+                    else {
+                        let submitButton = document.getElementById('submit_button');
+                        submitButton.remove();
+                    }
+                    resultElement.innerHTML = `${coefficient}`;
+                }
+            );
             e.preventDefault();
         }
     )
 }
 
-/**
- *
- * @param answerElement
- */
 function renderAnswer(answerElement) {
     let answer = JSON.parse(answerElement.dataset.answer);
     switch (answer['type']) {
@@ -124,9 +135,11 @@ function getFillInSingleBlankAnswer(answerElement) {
     'problem_id': answerElement.parentElement.parentElement.dataset.problem};
 }
 
-async function validateAnswer() {
+async function validateAnswer(answerElement) {
+    const problemElement = answerElement.parentElement.parentElement;
+    const url = `/semesters/${problemElement.dataset.semester}/problems/${problemElement.dataset.problem}/validate_answer/`;
     const csrf = document.getElementsByName('csrfmiddlewaretoken')[0].value;
-    let response = await fetch('validate_answer/', {
+    let response = await fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

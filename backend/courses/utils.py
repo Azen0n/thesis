@@ -1,27 +1,16 @@
-from courses.models import Problem
+from django.contrib.auth.models import User
+
+from algorithm.models import Progress
+from courses.models import Semester, Problem, THEORY_TYPES, PRACTICE_TYPES
 
 
-def get_answer_safe_data(problem: Problem):
-    match problem.type:
-        case 'Multiple Choice Radio':
-            answer = {
-                'type': 'Multiple Choice Radio',
-                'options': [{'id': str(option.id),
-                             'text': option.text} for option in
-                            problem.multiplechoiceradio_set.all()]
-            }
-        case 'Multiple Choice Checkbox':
-            answer = {
-                'type': 'Multiple Choice Checkbox',
-                'options': [{'id': str(option.id),
-                             'text': option.text} for option in
-                            problem.multiplechoicecheckbox_set.all()]
-            }
-        case 'Fill In Single Blank':
-            answer = {
-                'type': 'Fill In Single Blank',
-                'problem_id': str(problem.id)
-            }
-        case _:
-            answer = {}
-    return answer
+def is_problem_topic_completed(user: User, semester: Semester, problem: Problem) -> bool:
+    """Возвращает True, если тема задания завершена."""
+    progress = Progress.objects.get(user=user, semester=semester, topic=problem.main_topic)
+    if problem.type in THEORY_TYPES:
+        if progress.is_theory_completed():
+            return True
+    elif problem.type in PRACTICE_TYPES:
+        if progress.is_practice_completed():
+            return True
+    return False
