@@ -10,11 +10,12 @@ def next_theory_problem(progress: Progress) -> Problem:
     """Возвращает следующее теоретическое задание по текущей теме студента."""
     if progress.is_theory_completed():
         raise NotImplementedError('Тест по теории завершен.')
-    if not progress.topic.parent_topic.progress_set.filter(
-            user=progress.user, semester=progress.semester
-    ).first().is_theory_low_reached():
-        raise NotImplementedError(f'Необходимо завершить тест по теории по теме'
-                                  f' {progress.topic.parent_topic}.')
+    if progress.topic.parent_topic is not None:
+        if not progress.topic.parent_topic.progress_set.filter(
+                user=progress.user, semester=progress.semester
+        ).first().is_theory_low_reached():
+            raise NotImplementedError(f'Необходимо завершить тест по теории по теме'
+                                      f' {progress.topic.parent_topic}.')
     problem = filter_theory_problems(progress).first()
     if problem is None:
         raise NotImplementedError('Доступных теоретических заданий нет.')

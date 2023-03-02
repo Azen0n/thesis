@@ -46,10 +46,7 @@ def filter_practice_problems(user: User, semester: Semester) -> QuerySet[Problem
             user,
             semester,
             get_suitable_problem_difficulty(progress.skill_level)
-        ).filter(
-            main_topic=progress.topic,
-            type__in=PRACTICE_TYPES
-        )
+        ).filter(main_topic=progress.topic, type__in=PRACTICE_TYPES)
     return problems
 
 
@@ -63,9 +60,16 @@ def filter_problems(user: User, semester: Semester, max_difficulty: Difficulty) 
         progress__theory_points__gte=threshold_low,
         progress__semester=semester
     )
+    topics_with_completed_parent_topics = Topic.objects.filter(
+        Q(parent_topic__isnull=True)
+        | (Q(parent_topic__progress__theory_points__gte=threshold_low)
+           & Q(parent_topic__progress__user=user)
+           & Q(parent_topic__progress__semester=semester))
+    )
     problems = Problem.objects.filter(
         ~Q(useranswer__user=user),
         Q(sub_topics__isnull=True) | Q(sub_topics__in=topics_with_completed_theory),
+        main_topic__in=topics_with_completed_parent_topics,
         difficulty__lte=max_difficulty,
     ).order_by('-difficulty')
     return problems
