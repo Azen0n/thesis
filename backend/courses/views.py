@@ -20,7 +20,7 @@ class SemesterListView(ListView):
 
 class SemesterView(View):
 
-    def get(self, request: HttpRequest, pk: UUID):
+    def get(self, request: HttpRequest, pk: UUID) -> HttpResponse:
         if not request.user.is_authenticated:
             return render(request, 'error.html', {'message': 'Войдите в систему, чтобы просматривать курсы.'},
                           status=401)
@@ -44,11 +44,13 @@ class SemesterView(View):
 
 class TopicView(View):
 
-    def get(self, request: HttpRequest, semester_pk: UUID, pk: UUID):
+    def get(self, request: HttpRequest, semester_pk: UUID, pk: UUID) -> HttpResponse:
         if not request.user.is_authenticated:
             return render(request, 'error.html', {'message': 'Войдите в систему, чтобы просматривать темы.'},
                           status=401)
         semester = Semester.objects.get(pk=semester_pk)
+        if request.user not in semester.students.all():
+            return render(request, 'error.html', {'message': 'Запишитесь на курс, чтобы просматривать темы.'})
         topic = Topic.objects.get(pk=pk)
         parent_topic_progress = Progress.objects.filter(semester=semester, user=request.user,
                                                         topic=topic.parent_topic).first()
@@ -68,11 +70,13 @@ class TopicView(View):
 
 class ProblemView(View):
 
-    def get(self, request: HttpRequest, semester_pk: UUID, pk: UUID):
+    def get(self, request: HttpRequest, semester_pk: UUID, pk: UUID) -> HttpResponse:
         if not request.user.is_authenticated:
             return render(request, 'error.html', {'message': 'Войдите в систему, чтобы просматривать задания.'},
                           status=401)
         semester = Semester.objects.get(pk=semester_pk)
+        if request.user not in semester.students.all():
+            return render(request, 'error.html', {'message': 'Запишитесь на курс, чтобы просматривать задания.'})
         problem = Problem.objects.get(pk=pk)
         progress = Progress.objects.get(user=request.user, semester=semester, topic=problem.main_topic)
         if problem.type in PRACTICE_TYPES and not progress.is_theory_low_reached():
