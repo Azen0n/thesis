@@ -6,7 +6,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 
 from algorithm.models import Progress
-from algorithm.utils import create_user_progress
+from algorithm.utils import create_user_progress_if_not_exists
 from algorithm.problem_selector import (next_theory_problem as get_next_theory_problem,
                                         next_practice_problem as get_next_practice_problem)
 from courses.models import Semester
@@ -17,7 +17,7 @@ def enroll_semester(request: HttpRequest, pk: UUID) -> HttpResponse:
     semester = Semester.objects.get(pk=pk)
     if semester.students.filter(pk=request.user.pk).first() is None:
         semester.students.add(request.user)
-        create_user_progress(semester, request.user)
+        create_user_progress_if_not_exists(semester, request.user)
     return redirect(f'/semesters/{semester.pk}')
 
 

@@ -3,9 +3,12 @@ import random
 
 from django.contrib.auth.models import User
 
-from algorithm.models import TopicGraphEdge
-from algorithm.utils import create_user_progress
-from answers.models import MultipleChoiceRadio, MultipleChoiceCheckbox, FillInSingleBlank
+from algorithm.models import (TopicGraphEdge, Progress, UserWeakestLinkState,
+                              WeakestLinkState, UserAnswer, WeakestLinkProblem,
+                              WeakestLinkTopic)
+from algorithm.utils import create_user_progress_if_not_exists
+from answers.models import (MultipleChoiceRadio, MultipleChoiceCheckbox,
+                            FillInSingleBlank)
 from config.settings import Constants
 from courses.models import (Course, Semester, Module, Topic, Problem,
                             THEORY_TYPES, Difficulty, Type, PRACTICE_TYPES)
@@ -14,6 +17,9 @@ random.seed(42)
 
 
 def generate_test_data():
+    """Создает тестовый курс с заданиями и семестру по нему.
+    Создает и записывает на курс пользователя admin с правами администратора.
+    """
     semester = Semester.objects.filter(course__title='Test Course').first()
     if not semester:
         semester = create_test_semester()
@@ -21,11 +27,12 @@ def generate_test_data():
         create_problems(semester.course)
         create_random_answers(semester.course)
         create_random_topic_graph(Topic.objects.filter(module__course=semester.course))
-    user = User.objects.filter(username='test_user').first()
+    user = User.objects.filter(username='admin').first()
     if not user:
-        user = create_test_user()
+        user = create_superuser()
+    if user not in semester.students.all():
         semester.students.add(user)
-        create_user_progress(semester, user)
+    create_user_progress_if_not_exists(semester, user)
 
 
 def create_test_semester() -> Semester:
@@ -43,11 +50,11 @@ def create_test_semester() -> Semester:
     return semester
 
 
-def create_test_user() -> User:
-    """Создает и возвращает пользователя test_user."""
-    return User.objects.create_user(username='test_user',
-                                    email='example@mail.com',
-                                    password='password')
+def create_superuser() -> User:
+    """Создает и возвращает пользователя admin с правами администратора."""
+    return User.objects.create_superuser(username='admin',
+                                         email='admin@mail.com',
+                                         password='admin')
 
 
 def create_test_topics(course: Course, number_of_topics: int = 10):
@@ -190,3 +197,44 @@ def create_random_multiple_choice_checkbox_answers(problem: Problem):
 def create_random_fill_in_single_blank_answers(problem: Problem):
     """Создает верный ответ на задание с типом заполнения пропуска."""
     FillInSingleBlank.objects.create(text='True', problem=problem)
+
+
+def clear_progresses_for_all_users_and_semesters():
+    """Сбрасывает прогресс всех пользователей по всем курсам."""
+    progresses = Progress.objects.all()
+    for progress in progresses:
+        progress.theory_points = 0.0
+        progress.practice_points = 0.0
+        progress.skill_level = 1.4
+        progress.save()
+
+
+def clear_user_weakest_link_states():
+    """Сбрасывает статус алгоритма поиска слабого звена."""
+    user_weakest_link_states = UserWeakestLinkState.objects.all()
+    for state in user_weakest_link_states:
+        state.state = WeakestLinkState.NONE
+        state.save()
+
+
+def delete_and_clear_all_objects():
+    """Удаляет и сбрасывает созданные пользователями объекты в процессе
+    прохождения курсов.
+    """
+    UserAnswer.objects.all().delete()
+    clear_progresses_for_all_users_and_semesters()
+    clear_user_weakest_link_states()
+    WeakestLinkProblem.objects.all().delete()
+    WeakestLinkTopic.objects.all().delete()
+
+
+def reset_semesters_without_disenroll():
+    """Сбрасывает все пользовательские данные, созданные в процессе
+    прохождения курсов без удаления данных о курсах.
+    """
+    delete_and_clear_all_objects()
+
+
+def delete_everything():
+    """Удаляет все объекты, связанные с курсами."""
+    Course.objects.all().delete()
