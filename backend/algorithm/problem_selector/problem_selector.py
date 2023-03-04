@@ -2,8 +2,10 @@ from django.contrib.auth.models import User
 
 from algorithm.models import (Progress, UserWeakestLinkState, WeakestLinkState,
                               WeakestLinkProblem)
+from config.settings import Constants
 from courses.models import Problem, Semester
-from .utils import filter_practice_problems, filter_theory_problems
+from .utils import filter_practice_problems, filter_theory_problems, get_last_theory_user_answers, \
+    get_suitable_problem_difficulty
 
 
 def next_theory_problem(progress: Progress) -> Problem:
@@ -16,7 +18,13 @@ def next_theory_problem(progress: Progress) -> Problem:
         ).first().is_theory_low_reached():
             raise NotImplementedError(f'Необходимо завершить тест по теории по теме'
                                       f' {progress.topic.parent_topic}.')
-    problem = filter_theory_problems(progress).first()
+    problems = filter_theory_problems(progress)
+    last_answers = get_last_theory_user_answers(progress.user, progress.topic)
+    if len(last_answers) < Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
+        difficulty = get_suitable_problem_difficulty(progress.skill_level)
+        problem = problems.filter(difficulty=difficulty).first()
+    else:
+        problem = problems.first()
     if problem is None:
         raise NotImplementedError('Доступных теоретических заданий нет.')
     return problem

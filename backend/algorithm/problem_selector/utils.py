@@ -121,13 +121,22 @@ def correct_answer_probability(skill_level: float, difficulty: Difficulty) -> fl
     return 1 / (1 + math.exp(-(skill_level - DIFFICULTY_COEFFICIENT[difficulty])))
 
 
-def get_last_user_answer(user: User, semester: Semester) -> UserAnswer | None:
-    """Возвращает последний ответ пользователя на практическое задание."""
+def get_last_practice_user_answers(user: User, semester: Semester) -> QuerySet[UserAnswer]:
+    """Возвращает практические задания по теме, решенные пользователем."""
     return UserAnswer.objects.filter(
         user=user,
         semester=semester,
         problem__type__in=PRACTICE_TYPES
-    ).order_by('-created_at').first()
+    ).order_by('-created_at')
+
+
+def get_last_theory_user_answers(user: User, topic: Topic) -> QuerySet[UserAnswer]:
+    """Возвращает теоретические задания по теме, решенные пользователем."""
+    return UserAnswer.objects.filter(
+        user=user,
+        problem__main_topic=topic,
+        problem__type__in=THEORY_TYPES
+    ).order_by('-created_at')
 
 
 def filter_wrongly_answered_theory_problems(progress: Progress) -> QuerySet[Problem]:

@@ -5,7 +5,7 @@ from django.db.models import QuerySet
 from algorithm.models import (UserAnswer, WeakestLinkProblem, UserWeakestLinkState,
                               WeakestLinkState, WeakestLinkTopic, Progress)
 from algorithm.problem_selector.topic_graph import load_topic_graph
-from algorithm.problem_selector.utils import get_last_user_answer, filter_practice_problems
+from algorithm.problem_selector.utils import get_last_practice_user_answers, filter_practice_problems
 from config.settings import Constants
 from courses.models import Problem, Topic, Semester, Difficulty
 
@@ -13,7 +13,7 @@ from courses.models import Problem, Topic, Semester, Difficulty
 def start_weakest_link_when_ready(user: User, semester: Semester) -> Problem | None:
     """Заполняет очередь слабого звена, если выполнено условие
     на запуск алгоритма из get_practice_problems_for_weakest_link."""
-    last_answer = get_last_user_answer(user, semester)
+    last_answer = get_last_practice_user_answers(user, semester).first()
     if last_answer is None:
         return
     if not last_answer.is_solved:
