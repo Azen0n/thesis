@@ -83,13 +83,11 @@ def fill_weakest_link_queue(user: User, semester: Semester,
     """
     topic_graph = load_topic_graph(semester.course)
     topic_groups = topic_graph.split_topics_in_two_groups(topics)
-    problems = filter_practice_problems(user, semester)
+    problems = filter_practice_problems(user, semester, max_difficulty)
     final_topic_groups = []
     for group_number, topic_group in enumerate(topic_groups, start=1):
         group_problems = find_problems_with_topics(topic_group, problems)
-        weakest_link_problems = group_problems.filter(
-            difficulty__lte=max_difficulty
-        )[:Constants.WEAKEST_LINK_MAX_PROBLEMS_PER_GROUP]
+        weakest_link_problems = group_problems[:Constants.WEAKEST_LINK_MAX_PROBLEMS_PER_GROUP]
         if not weakest_link_problems:
             continue
         for problem in weakest_link_problems:

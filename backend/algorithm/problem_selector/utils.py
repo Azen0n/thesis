@@ -28,7 +28,8 @@ def filter_theory_problems(progress: Progress) -> QuerySet[Problem]:
     return problems
 
 
-def filter_practice_problems(user: User, semester: Semester) -> QuerySet[Problem]:
+def filter_practice_problems(user: User, semester: Semester,
+                             max_difficulty: Difficulty = None) -> QuerySet[Problem]:
     """Возвращает практические задания, доступные для текущего пользователя
     упорядоченные в порядке убывания сложности.
     """
@@ -37,7 +38,10 @@ def filter_practice_problems(user: User, semester: Semester) -> QuerySet[Problem
         raise NotImplementedError('Необходимо завершить тест'
                                   ' по теории хотя бы по одной теме.')
     problems = filter_problems(user, semester).filter(type__in=PRACTICE_TYPES)
-    problems = filter_problems_with_suitable_difficulty(problems, available_progresses)
+    if max_difficulty is None:
+        problems = filter_problems_with_suitable_difficulty(problems, available_progresses)
+    else:
+        problems = problems.filter(difficulty__lte=max_difficulty)
     return problems
 
 
