@@ -20,9 +20,10 @@ def filter_theory_problems(progress: Progress) -> QuerySet[Problem]:
     упорядоченные в порядке убывания сложности.
     """
     difficulty = get_suitable_problem_difficulty(progress.skill_level)
-    problems = filter_problems(progress.user, progress.semester, difficulty).filter(
+    problems = filter_problems(progress.user, progress.semester).filter(
         main_topic=progress.topic,
-        type__in=THEORY_TYPES
+        type__in=THEORY_TYPES,
+        difficulty__lte=difficulty
     ).order_by('-difficulty')
     return problems
 
@@ -31,26 +32,28 @@ def filter_practice_problems(user: User, semester: Semester) -> QuerySet[Problem
     """Возвращает практические задания, доступные для текущего пользователя
     упорядоченные в порядке убывания сложности.
     """
-    available_progresses = Progress.objects.filter(
+    available_progresses = get_available_progresses(user, semester)
+    if not available_progresses:
+        raise NotImplementedError('Необходимо завершить тест'
+                                  ' по теории хотя бы по одной теме.')
+    problems = filter_problems(user, semester).filter(type__in=PRACTICE_TYPES)
+    problems = filter_problems_with_suitable_difficulty(problems, available_progresses)
+    return problems
+
+
+def get_available_progresses(user: User, semester: Semester) -> QuerySet[Progress]:
+    """Возвращает прогрессы по темам, по которым набран минимальный балл
+    по теории и не завершена практика.
+    """
+    return Progress.objects.filter(
         user=user,
         theory_points__gte=get_theory_threshold_low(),
         practice_points__lt=Constants.TOPIC_PRACTICE_MAX_POINTS,
         semester=semester
     )
-    if not available_progresses:
-        raise NotImplementedError('Необходимо завершить тест'
-                                  ' по теории хотя бы по одной теме.')
-    problems = Problem.objects.none()
-    for progress in available_progresses:
-        problems |= filter_problems(
-            user,
-            semester,
-            get_suitable_problem_difficulty(progress.skill_level)
-        ).filter(main_topic=progress.topic, type__in=PRACTICE_TYPES)
-    return problems
 
 
-def filter_problems(user: User, semester: Semester, max_difficulty: Difficulty) -> QuerySet[Problem]:
+def filter_problems(user: User, semester: Semester) -> QuerySet[Problem]:
     """Возвращает теоретические и практические задания, доступные для текущего пользователя
     упорядоченные в порядке убывания сложности.
     """
@@ -70,9 +73,22 @@ def filter_problems(user: User, semester: Semester, max_difficulty: Difficulty) 
         ~Q(useranswer__user=user),
         Q(sub_topics__isnull=True) | Q(sub_topics__in=topics_with_completed_theory),
         main_topic__in=topics_with_completed_parent_topics,
-        difficulty__lte=max_difficulty,
     ).order_by('-difficulty')
     return problems
+
+
+def filter_problems_with_suitable_difficulty(problems: QuerySet[Problem],
+                                             available_progresses: QuerySet[Progress]) -> QuerySet[Problem]:
+    """Возвращает задания с подходящим уровнем сложности по каждой теме."""
+    appropriate_problem_ids = []
+    for problem in problems:
+        progress = available_progresses.filter(topic=problem.main_topic).first()
+        if progress is None:
+            continue
+        difficulty = get_suitable_problem_difficulty(progress.skill_level)
+        if problem.difficulty == difficulty.value:
+            appropriate_problem_ids.append(problem.id)
+    return Problem.objects.filter(id__in=appropriate_problem_ids)
 
 
 def get_theory_threshold_low() -> float:
