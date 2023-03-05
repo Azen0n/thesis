@@ -32,10 +32,14 @@ class TopicGraph:
         if len(topics) in [1, 2]:
             return topics[:1], topics[1:]
         group_combinations1, group_combinations2 = get_group_combinations(topics)
+        group_combinations1 = list(group_combinations1)
+        group_combinations2 = list(group_combinations2)
         max_weight = 0.0
         final_groups = ()
         for combination1 in group_combinations1:
             for combination2 in group_combinations2:
+                if set(combination1 + combination2) != set(topics):
+                    continue
                 weight = self.calc_topic_group_weight(combination1)
                 weight += self.calc_topic_group_weight(combination2)
                 if weight > max_weight:
