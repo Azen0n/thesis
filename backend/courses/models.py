@@ -126,7 +126,8 @@ class Problem(models.Model):
                                         blank=True)
 
     def __str__(self):
-        return self.title
+        return (f'{self.title}, difficulty={self.get_difficulty_display()},'
+                f' main_topic={self.main_topic}')
 
 
 class Hint(models.Model):

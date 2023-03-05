@@ -77,7 +77,7 @@ def filter_problems(user: User, semester: Semester) -> QuerySet[Problem]:
         ~Q(useranswer__user=user),
         Q(sub_topics__isnull=True) | Q(sub_topics__in=topics_with_completed_theory),
         main_topic__in=topics_with_completed_parent_topics,
-    ).order_by('-difficulty')
+    ).distinct().order_by('-difficulty')
     return problems
 
 
