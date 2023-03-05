@@ -10,6 +10,12 @@ from algorithm.problem_selector.utils import get_last_practice_user_answers, fil
 from config.settings import Constants
 from courses.models import Problem, Topic, Semester, Difficulty
 
+DIFFICULTY_COEFFICIENT = {
+    Difficulty.EASY.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_EASY,
+    Difficulty.NORMAL.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_NORMAL,
+    Difficulty.HARD.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_HARD,
+}
+
 
 def start_weakest_link_when_ready(user: User, semester: Semester) -> Problem | None:
     """Заполняет очередь слабого звена, если выполнено условие
@@ -228,7 +234,7 @@ def decrease_user_skill_level_after_weakest_link(user: User, semester: Semester,
     """Понижает уровень знаний по проблемным темам, определенным поиском слабого звена."""
     for topic in topics:
         progress = Progress.objects.get(user=user, semester=semester, topic=topic)
-        progress.skill_level -= Constants.ALGORITHM_WRONG_ANSWER_PENALTY * 2
+        progress.skill_level -= Constants.WEAKEST_LINK_PENALTY
         progress.save()
 
 
