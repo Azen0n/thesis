@@ -4,6 +4,7 @@ from django.db.models import QuerySet
 
 from algorithm.models import (UserAnswer, WeakestLinkProblem, UserWeakestLinkState,
                               WeakestLinkState, WeakestLinkTopic, Progress)
+from algorithm.problem_selector.points_maximization import get_problems_with_max_value
 from algorithm.problem_selector.topic_graph import load_topic_graph
 from algorithm.problem_selector.utils import get_last_practice_user_answers, filter_practice_problems
 from config.settings import Constants
@@ -87,6 +88,7 @@ def fill_weakest_link_queue(user: User, semester: Semester,
     final_topic_groups = []
     for group_number, topic_group in enumerate(topic_groups, start=1):
         group_problems = find_problems_with_topics(topic_group, problems)
+        group_problems = get_problems_with_max_value(user, semester, group_problems)
         weakest_link_problems = group_problems[:Constants.WEAKEST_LINK_MAX_PROBLEMS_PER_GROUP]
         if not weakest_link_problems:
             continue

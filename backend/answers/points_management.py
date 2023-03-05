@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 
-from algorithm.models import Progress
+from algorithm.models import Progress, UserAnswer
 from config.settings import Constants
 from courses.models import (Semester, Problem, Difficulty, Topic,
                             THEORY_TYPES, PRACTICE_TYPES)
@@ -19,6 +19,12 @@ def add_points_for_problem(user: User, semester: Semester, problem: Problem, coe
     add_points_to_topic(user, semester, problem.main_topic, problem, points)
     for topic in problem.sub_topics.all():
         add_points_to_topic(user, semester, topic, problem, sub_topic_points)
+
+
+def add_placement_points_for_problem(progress: Progress, user_answer: UserAnswer):
+    """Добавляет баллы во все темы задания с учетом коэффициента калибровки."""
+    coefficient = user_answer.coefficient * Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_POINTS_COEFFICIENT
+    add_points_for_problem(progress.user, progress.semester, user_answer.problem, coefficient)
 
 
 def add_points_to_topic(user: User, semester: Semester, topic: Topic,

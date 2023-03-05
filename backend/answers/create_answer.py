@@ -9,8 +9,14 @@ from algorithm.problem_selector.weakest_link import (check_weakest_link,
                                                      stop_weakest_link_when_practice_completed)
 from config.settings import Constants
 from .models import Answer, MultipleChoiceRadio, MultipleChoiceCheckbox
-from courses.models import Problem, Semester, PRACTICE_TYPES, Type, THEORY_TYPES
-from .points_management import add_points_for_problem
+from courses.models import Problem, Semester, PRACTICE_TYPES, Type, THEORY_TYPES, Difficulty
+from .points_management import add_points_for_problem, add_placement_points_for_problem
+
+DIFFICULTY_COEFFICIENT = {
+    Difficulty.EASY.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_EASY,
+    Difficulty.NORMAL.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_NORMAL,
+    Difficulty.HARD.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_HARD,
+}
 
 
 @transaction.atomic
@@ -39,11 +45,15 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
     if problem.type in THEORY_TYPES:
         last_answers = get_last_theory_user_answers(user, problem.main_topic)
         if len(last_answers) < Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
+            if is_solved:
+                add_placement_points_for_problem(progress, user_answer)
             return
         if len(last_answers) == Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
-            placement_change_skill_level_and_add_points(progress, last_answers)
+            if is_solved:
+                add_placement_points_for_problem(progress, user_answer)
+            placement_change_skill_level(progress, last_answers)
             return
-    change_user_skill_level(progress, is_solved)
+    change_user_skill_level(progress, user_answer)
     if is_solved:
         add_points_for_problem(user, semester, problem, coefficient)
     user_weakest_link_state = UserWeakestLinkState.objects.get(user=user, semester=semester)
@@ -70,19 +80,12 @@ def create_entered_user_answers(problem_type: str,
             raise ValueError(f'Неизвестный тип {other_type}.')
 
 
-def placement_change_skill_level_and_add_points(progress: Progress,
-                                                last_answers: QuerySet[UserAnswer]):
-    """На основе калибровки изменяет уровень знаний по теме и добавляет баллы
-    за правильно решенные задания.
-    """
+def placement_change_skill_level(progress: Progress, last_answers: QuerySet[UserAnswer]):
+    """На основе калибровки изменяет уровень знаний по теме."""
     longest_streak = calculate_longest_solved_streak(last_answers)
     progress.skill_level += (longest_streak * Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_BONUS
                              - Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_BIAS)
     progress.save()
-    for answer in last_answers:
-        if answer.is_solved:
-            points = answer.coefficient * Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_POINTS_COEFFICIENT
-            add_points_for_problem(progress.user, progress.semester, answer.problem, points)
 
 
 def calculate_longest_solved_streak(last_answers: QuerySet[UserAnswer]) -> float:
@@ -98,12 +101,13 @@ def calculate_longest_solved_streak(last_answers: QuerySet[UserAnswer]) -> float
     return max(longest_streak, current_streak)
 
 
-def change_user_skill_level(progress: Progress, is_solved: bool):
+def change_user_skill_level(progress: Progress, user_answer: UserAnswer):
     """Изменяет уровень знаний пользователя по текущей теме в зависимости от
-    правильности ответа на задание.
+    правильности ответа на задание и его сложности.
     """
-    if is_solved:
-        progress.skill_level += Constants.ALGORITHM_CORRECT_ANSWER_BONUS
+    difficulty_coefficient = DIFFICULTY_COEFFICIENT[user_answer.problem.difficulty]
+    if user_answer.is_solved:
+        progress.skill_level += difficulty_coefficient
     else:
-        progress.skill_level -= Constants.ALGORITHM_WRONG_ANSWER_PENALTY
+        progress.skill_level -= difficulty_coefficient
     progress.save()
