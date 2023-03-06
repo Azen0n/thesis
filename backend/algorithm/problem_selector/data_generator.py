@@ -3,9 +3,12 @@ import random
 
 from django.contrib.auth.models import User
 
-from algorithm.models import TopicGraphEdge
-from algorithm.utils import create_user_progress
-from answers.models import MultipleChoiceRadio, MultipleChoiceCheckbox, FillInSingleBlank
+from algorithm.models import (TopicGraphEdge, Progress, UserWeakestLinkState,
+                              WeakestLinkState, UserAnswer, WeakestLinkProblem,
+                              WeakestLinkTopic)
+from algorithm.utils import create_user_progress_if_not_exists
+from answers.models import (MultipleChoiceRadio, MultipleChoiceCheckbox,
+                            FillInSingleBlank)
 from config.settings import Constants
 from courses.models import (Course, Semester, Module, Topic, Problem,
                             THEORY_TYPES, Difficulty, Type, PRACTICE_TYPES)
@@ -14,6 +17,9 @@ random.seed(42)
 
 
 def generate_test_data():
+    """Создает тестовый курс с заданиями и семестру по нему.
+    Создает и записывает на курс пользователя admin с правами администратора.
+    """
     semester = Semester.objects.filter(course__title='Test Course').first()
     if not semester:
         semester = create_test_semester()
@@ -21,11 +27,12 @@ def generate_test_data():
         create_problems(semester.course)
         create_random_answers(semester.course)
         create_random_topic_graph(Topic.objects.filter(module__course=semester.course))
-    user = User.objects.filter(username='test_user').first()
+    user = User.objects.filter(username='admin').first()
     if not user:
-        user = create_test_user()
+        user = create_superuser()
+    if user not in semester.students.all():
         semester.students.add(user)
-        create_user_progress(semester, user)
+    create_user_progress_if_not_exists(semester, user)
 
 
 def create_test_semester() -> Semester:
@@ -43,11 +50,11 @@ def create_test_semester() -> Semester:
     return semester
 
 
-def create_test_user() -> User:
-    """Создает и возвращает пользователя test_user."""
-    return User.objects.create_user(username='test_user',
-                                    email='example@mail.com',
-                                    password='password')
+def create_superuser() -> User:
+    """Создает и возвращает пользователя admin с правами администратора."""
+    return User.objects.create_superuser(username='admin',
+                                         email='admin@mail.com',
+                                         password='admin')
 
 
 def create_test_topics(course: Course, number_of_topics: int = 10):
@@ -94,24 +101,45 @@ def create_problem(problem_title: str, topic: Topic,
                    available_sub_topics: list[Topic],
                    types: list[Type]):
     """Создает задание со случайными подтемами."""
+    number_of_sub_topics = generate_number_of_sub_topics(len(available_sub_topics))
+    difficulty = random.choice([Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD])
+    time_to_solve_in_seconds = generate_time_to_solve_in_seconds(types, difficulty,
+                                                                 number_of_sub_topics)
     problem = Problem.objects.create(
         title=problem_title,
         description='Lorem Ipsum',
         type=random.choice(types),
-        difficulty=random.choice([Difficulty.EASY,
-                                  Difficulty.NORMAL,
-                                  Difficulty.HARD]),
+        difficulty=difficulty,
+        time_to_solve_in_seconds=time_to_solve_in_seconds,
         main_topic=topic
     )
-    if len(available_sub_topics) > Constants.MAX_NUMBER_OF_SUB_TOPICS:
-        max_number_of_sub_topics = Constants.MAX_NUMBER_OF_SUB_TOPICS
-    else:
-        max_number_of_sub_topics = len(available_sub_topics)
     if available_sub_topics:
-        sub_topics = random.sample(available_sub_topics,
-                                   k=random.randint(0, max_number_of_sub_topics))
+        sub_topics = random.sample(available_sub_topics, k=number_of_sub_topics)
         if sub_topics:
             problem.sub_topics.add(*sub_topics)
+
+
+def generate_time_to_solve_in_seconds(types: list[Type], difficulty: Difficulty,
+                                      number_of_sub_topics: int) -> float:
+    """Возвращает количество секунд на решение задания."""
+    if types == THEORY_TYPES:
+        time_to_solve_in_seconds = random.randint(1, 5) + (
+                100 * difficulty.value - 100) + 10 * (1 + number_of_sub_topics)
+    elif types == PRACTICE_TYPES:
+        time_to_solve_in_seconds = random.randint(1, 5) * 5 + (
+                500 * difficulty.value - 200) + 10 * (1 + number_of_sub_topics)
+    else:
+        raise ValueError(f'Неизвестные типы заданий: {", ".join(types)}.')
+    return time_to_solve_in_seconds
+
+
+def generate_number_of_sub_topics(number_of_available_sub_topics: int) -> int:
+    """Возвращает случайное количество подтем."""
+    if number_of_available_sub_topics > Constants.MAX_NUMBER_OF_SUB_TOPICS:
+        max_number_of_sub_topics = Constants.MAX_NUMBER_OF_SUB_TOPICS
+    else:
+        max_number_of_sub_topics = number_of_available_sub_topics
+    return random.randint(0, max_number_of_sub_topics)
 
 
 def create_random_topic_graph(topics: list[Topic]):
@@ -169,3 +197,44 @@ def create_random_multiple_choice_checkbox_answers(problem: Problem):
 def create_random_fill_in_single_blank_answers(problem: Problem):
     """Создает верный ответ на задание с типом заполнения пропуска."""
     FillInSingleBlank.objects.create(text='True', problem=problem)
+
+
+def clear_progresses_for_all_users_and_semesters():
+    """Сбрасывает прогресс всех пользователей по всем курсам."""
+    progresses = Progress.objects.all()
+    for progress in progresses:
+        progress.theory_points = 0.0
+        progress.practice_points = 0.0
+        progress.skill_level = 1.4
+        progress.save()
+
+
+def clear_user_weakest_link_states():
+    """Сбрасывает статус алгоритма поиска слабого звена."""
+    user_weakest_link_states = UserWeakestLinkState.objects.all()
+    for state in user_weakest_link_states:
+        state.state = WeakestLinkState.NONE
+        state.save()
+
+
+def delete_and_clear_all_objects():
+    """Удаляет и сбрасывает созданные пользователями объекты в процессе
+    прохождения курсов.
+    """
+    UserAnswer.objects.all().delete()
+    clear_progresses_for_all_users_and_semesters()
+    clear_user_weakest_link_states()
+    WeakestLinkProblem.objects.all().delete()
+    WeakestLinkTopic.objects.all().delete()
+
+
+def reset_semesters_without_disenroll():
+    """Сбрасывает все пользовательские данные, созданные в процессе
+    прохождения курсов без удаления данных о курсах.
+    """
+    delete_and_clear_all_objects()
+
+
+def delete_everything():
+    """Удаляет все объекты, связанные с курсами."""
+    Course.objects.all().delete()

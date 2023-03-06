@@ -12,6 +12,8 @@ from courses.models import Semester, Problem, PRACTICE_TYPES
 def validate_answer(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -> HttpResponse:
     """Проверка ответа пользователя с записью в БД и обновлением баллов."""
     semester = Semester.objects.get(id=semester_pk)
+    if request.user not in semester.students.all():
+        return JsonResponse(json.dumps({'error': 'Вы не записаны на курс.'}), safe=False)
     problem = Problem.objects.get(pk=problem_pk)
     if not is_parent_topic_completed(request.user, semester, problem):
         return JsonResponse(json.dumps({'error': f'Необходимо завершить тест по теории по теме'

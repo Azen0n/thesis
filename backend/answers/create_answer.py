@@ -1,14 +1,22 @@
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.db.models import QuerySet
 
 from algorithm.models import UserAnswer, Progress, UserWeakestLinkState, WeakestLinkState
+from algorithm.problem_selector.utils import get_last_theory_user_answers
 from algorithm.problem_selector.weakest_link import (check_weakest_link,
                                                      start_weakest_link_when_ready,
                                                      stop_weakest_link_when_practice_completed)
 from config.settings import Constants
 from .models import Answer, MultipleChoiceRadio, MultipleChoiceCheckbox
-from courses.models import Problem, Semester, PRACTICE_TYPES, Type
-from .points_management import add_points_for_problem
+from courses.models import Problem, Semester, PRACTICE_TYPES, Type, THEORY_TYPES, Difficulty
+from .points_management import add_points_for_problem, add_placement_points_for_problem
+
+DIFFICULTY_COEFFICIENT = {
+    Difficulty.EASY.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_EASY,
+    Difficulty.NORMAL.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_NORMAL,
+    Difficulty.HARD.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_HARD,
+}
 
 
 @transaction.atomic
@@ -25,7 +33,8 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
         user=user,
         semester=semester,
         problem=problem,
-        is_solved=is_solved
+        is_solved=is_solved,
+        coefficient=coefficient
     )
     create_entered_user_answers(problem.type, answer, user_answer)
     progress = Progress.objects.filter(
@@ -33,7 +42,18 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
         semester=semester,
         topic=problem.main_topic
     ).first()
-    change_user_skill_level(progress, is_solved)
+    if problem.type in THEORY_TYPES:
+        last_answers = get_last_theory_user_answers(user, problem.main_topic)
+        if len(last_answers) < Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
+            if is_solved:
+                add_placement_points_for_problem(progress, user_answer)
+            return
+        if len(last_answers) == Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
+            if is_solved:
+                add_placement_points_for_problem(progress, user_answer)
+            placement_change_skill_level(progress, last_answers)
+            return
+    change_user_skill_level(progress, user_answer)
     if is_solved:
         add_points_for_problem(user, semester, problem, coefficient)
     user_weakest_link_state = UserWeakestLinkState.objects.get(user=user, semester=semester)
@@ -60,30 +80,34 @@ def create_entered_user_answers(problem_type: str,
             raise ValueError(f'Неизвестный тип {other_type}.')
 
 
-def change_user_skill_level(progress: Progress, is_solved: bool):
-    """Изменяет уровень знаний пользователя по текущей теме в зависимости от
-    правильности ответа на задание."""
-    placement_coefficient = get_skill_level_placement_coefficient(progress)
-    if is_solved:
-        progress.skill_level += placement_coefficient * Constants.ALGORITHM_CORRECT_ANSWER_BONUS
-    else:
-        progress.skill_level -= placement_coefficient * Constants.ALGORITHM_WRONG_ANSWER_PENALTY
+def placement_change_skill_level(progress: Progress, last_answers: QuerySet[UserAnswer]):
+    """На основе калибровки изменяет уровень знаний по теме."""
+    longest_streak = calculate_longest_solved_streak(last_answers)
+    progress.skill_level += (longest_streak * Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_BONUS
+                             - Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_BIAS)
     progress.save()
 
 
-def get_skill_level_placement_coefficient(progress: Progress) -> float:
-    """Калибровка уровня знаний студента. За первые несколько ответов
-    пользователь получает больший прирост.
+def calculate_longest_solved_streak(last_answers: QuerySet[UserAnswer]) -> float:
+    """Возвращает наибольшую сумму коэффициентов правильно решенных заданий подряд."""
+    longest_streak = 0.0
+    current_streak = 0.0
+    for answer in last_answers:
+        if answer.is_solved:
+            current_streak += answer.coefficient
+        else:
+            longest_streak = max(longest_streak, current_streak)
+            current_streak = 0.0
+    return max(longest_streak, current_streak)
 
-    Возвращает коэффициент прироста.
+
+def change_user_skill_level(progress: Progress, user_answer: UserAnswer):
+    """Изменяет уровень знаний пользователя по текущей теме в зависимости от
+    правильности ответа на задание и его сложности.
     """
-    number_of_answered_problems = UserAnswer.objects.filter(
-        user=progress.user,
-        problem__main_topic=progress.topic
-    ).order_by('-created_at').count()
-    placement_answers = Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS
-    if number_of_answered_problems < placement_answers:
-        coefficient = placement_answers + 1 - number_of_answered_problems
+    difficulty_coefficient = DIFFICULTY_COEFFICIENT[user_answer.problem.difficulty]
+    if user_answer.is_solved:
+        progress.skill_level += difficulty_coefficient
     else:
-        coefficient = 1
-    return coefficient
+        progress.skill_level -= difficulty_coefficient
+    progress.save()

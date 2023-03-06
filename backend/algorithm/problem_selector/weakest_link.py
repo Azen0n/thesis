@@ -4,16 +4,23 @@ from django.db.models import QuerySet
 
 from algorithm.models import (UserAnswer, WeakestLinkProblem, UserWeakestLinkState,
                               WeakestLinkState, WeakestLinkTopic, Progress)
+from algorithm.problem_selector.points_maximization import get_problems_with_max_value
 from algorithm.problem_selector.topic_graph import load_topic_graph
-from algorithm.problem_selector.utils import get_last_user_answer, filter_practice_problems
+from algorithm.problem_selector.utils import get_last_practice_user_answers, filter_practice_problems
 from config.settings import Constants
 from courses.models import Problem, Topic, Semester, Difficulty
+
+DIFFICULTY_COEFFICIENT = {
+    Difficulty.EASY.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_EASY,
+    Difficulty.NORMAL.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_NORMAL,
+    Difficulty.HARD.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_HARD,
+}
 
 
 def start_weakest_link_when_ready(user: User, semester: Semester) -> Problem | None:
     """Заполняет очередь слабого звена, если выполнено условие
     на запуск алгоритма из get_practice_problems_for_weakest_link."""
-    last_answer = get_last_user_answer(user, semester)
+    last_answer = get_last_practice_user_answers(user, semester).first()
     if last_answer is None:
         return
     if not last_answer.is_solved:
@@ -83,13 +90,12 @@ def fill_weakest_link_queue(user: User, semester: Semester,
     """
     topic_graph = load_topic_graph(semester.course)
     topic_groups = topic_graph.split_topics_in_two_groups(topics)
-    problems = filter_practice_problems(user, semester)
+    problems = filter_practice_problems(user, semester, max_difficulty)
     final_topic_groups = []
     for group_number, topic_group in enumerate(topic_groups, start=1):
         group_problems = find_problems_with_topics(topic_group, problems)
-        weakest_link_problems = group_problems.filter(
-            difficulty__lte=max_difficulty
-        )[:Constants.WEAKEST_LINK_MAX_PROBLEMS_PER_GROUP]
+        group_problems = get_problems_with_max_value(user, semester, group_problems)
+        weakest_link_problems = group_problems[:Constants.WEAKEST_LINK_MAX_PROBLEMS_PER_GROUP]
         if not weakest_link_problems:
             continue
         for problem in weakest_link_problems:
@@ -228,7 +234,7 @@ def decrease_user_skill_level_after_weakest_link(user: User, semester: Semester,
     """Понижает уровень знаний по проблемным темам, определенным поиском слабого звена."""
     for topic in topics:
         progress = Progress.objects.get(user=user, semester=semester, topic=topic)
-        progress.skill_level -= Constants.ALGORITHM_WRONG_ANSWER_PENALTY * 2
+        progress.skill_level -= Constants.WEAKEST_LINK_PENALTY
         progress.save()
 
 

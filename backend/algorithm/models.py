@@ -22,7 +22,7 @@ class Progress(AbstractUserSemester):
     topic = models.ForeignKey(Topic, on_delete=models.CASCADE)
     theory_points = models.FloatField(default=0.0)
     practice_points = models.FloatField(default=0.0)
-    skill_level = models.FloatField(default=1.4)
+    skill_level = models.FloatField(default=1.7)
 
     class Meta:
         constraints = [
@@ -54,6 +54,7 @@ class Progress(AbstractUserSemester):
 class UserAnswer(AbstractUserSemester):
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
     is_solved = models.BooleanField()
+    coefficient = models.FloatField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
