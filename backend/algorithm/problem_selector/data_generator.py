@@ -1,7 +1,7 @@
-import datetime
 import random
 
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 from algorithm.models import (TopicGraphEdge, Progress, UserWeakestLinkState,
                               WeakestLinkState, UserAnswer, WeakestLinkProblem,
@@ -44,8 +44,8 @@ def create_test_semester() -> Semester:
     )
     semester = Semester.objects.create(
         course=course,
-        started_at=datetime.datetime.utcnow(),
-        ended_at=datetime.datetime.utcnow()
+        started_at=timezone.now(),
+        ended_at=timezone.now()
     )
     return semester
 
@@ -205,7 +205,7 @@ def clear_progresses_for_all_users_and_semesters():
     for progress in progresses:
         progress.theory_points = 0.0
         progress.practice_points = 0.0
-        progress.skill_level = 1.4
+        progress.skill_level = Constants.AVERAGE_SKILL_LEVEL
         progress.save()
 
 
