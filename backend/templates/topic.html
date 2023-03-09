@@ -15,13 +15,17 @@
                 <a href="{{ attachment.url }}">{{ attachment.name }}</a>
             </li>
             {% empty %}
-            <p>Нет вложений</p>
+            <li>
+                <p>Нет вложений</p>
+            </li>
         {% endfor %}
     </ul>
-    <form action="{% url 'next_theory_problem' semester.pk topic.pk %}">
-        <input type="submit" value="Следующее теоретическое задание"/>
-    </form>
-    <p>Прогресс по теории: {{ theory_points|floatformat:2 }}, по практике: {{ practice_points|floatformat:2 }}</p>
+    {% if not is_teacher %}
+        <form action="{% url 'next_theory_problem' semester.pk topic.pk %}">
+            <input type="submit" value="Следующее теоретическое задание"/>
+        </form>
+        <p>Прогресс по теории: {{ theory_points|floatformat:2 }}, по практике: {{ practice_points|floatformat:2 }}</p>
+    {% endif %}
     <p><b>Задания</b></p>
     <table>
         {% for problem in topic.problem_main_set.all %}

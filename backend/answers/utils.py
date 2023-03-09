@@ -105,7 +105,7 @@ def validate_fill_in_single_blank(problem_id: str, value: str) -> tuple[int, str
     return 0, value
 
 
-def get_correct_answers(problem_id: UUID, coefficient: float) -> dict:
+def get_correct_answers(problem_id: UUID) -> dict:
     """Возвращает словарь с верными ответами на задание."""
     problem = Problem.objects.get(pk=problem_id)
     match problem.type:
@@ -116,7 +116,8 @@ def get_correct_answers(problem_id: UUID, coefficient: float) -> dict:
             answers = MultipleChoiceCheckbox.objects.filter(problem=problem, is_correct=True)
             return {'is_correct': [str(answer.id) for answer in answers]}
         case Type.FILL_IN_SINGLE_BLANK.value:
-            return {'is_correct': True if coefficient == 1.0 else False}
+            return {'is_correct': list(FillInSingleBlank.objects.filter(
+                problem=problem).values_list('text', flat=True))}
         case Type.CODE.value:
             raise NotImplementedError('Проверки практических заданий нет.')
         case other_type:
