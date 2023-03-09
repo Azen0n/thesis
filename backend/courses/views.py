@@ -1,15 +1,18 @@
+from datetime import datetime
 import json
 from uuid import UUID
 
-from django.http import HttpRequest, HttpResponse
+from django.contrib.auth.models import User
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
+from django.utils import timezone
 from django.views import View
 from django.views.generic import ListView
 
 from algorithm.models import UserAnswer, Progress
-from .models import Semester, Topic, Problem, PRACTICE_TYPES
+from .models import Semester, Topic, Problem, PRACTICE_TYPES, SemesterCode
 from answers.utils import get_answer_safe_data
-from .utils import is_problem_topic_completed
+from .utils import is_problem_topic_completed, generate_join_code
 
 
 class SemesterListView(ListView):
@@ -25,7 +28,20 @@ class SemesterView(View):
             return render(request, 'error.html', {'message': 'Войдите в систему, чтобы просматривать курсы.'},
                           status=401)
         semester = Semester.objects.get(pk=pk)
+        code = SemesterCode.objects.filter(semester=semester).first()
+        code = '' if code is None else code
+        is_code_expired = code.expired_at < timezone.now()
+        default_expiration_time = timezone.now() + timezone.timedelta(weeks=1)
+        if default_expiration_time > semester.ended_at:
+            default_expiration_time = timezone.now()
         context = {
+            'is_teacher': semester in request.user.semester_teacher_set.all(),
+            'is_student': semester in request.user.semester_student_set.all(),
+            'code': code,
+            'is_code_expired': is_code_expired,
+            'min_expiration_time': timezone.now().strftime('%Y-%m-%dT%H:%M'),
+            'max_expiration_time': semester.ended_at.strftime('%Y-%m-%dT%H:%M'),
+            'default_expiration_time': default_expiration_time.strftime('%Y-%m-%dT%H:%M'),
             'semester': semester,
             'modules': [{
                 'module': module,
@@ -96,3 +112,24 @@ class ProblemView(View):
             'answer': json.dumps(answer),
         }
         return render(request, 'problem.html', context)
+
+
+def generate_semester_code(request: HttpRequest, semester_pk: UUID) -> HttpResponse:
+    """Создает новый код для присоединения к курсу."""
+    if not request.user.is_authenticated:
+        return render(request, 'error.html', {'message': 'Войдите в систему.'}, status=401)
+    teacher = User.objects.get(id=request.user.pk)
+    semester = Semester.objects.get(id=semester_pk)
+    if teacher not in semester.teachers.all():
+        return render(request, 'error.html', {'message': 'Вы не являетесь преподавателем курса.'},
+                      status=403)
+    expiration_time = datetime.strptime(json.loads(request.body)['expiration_time'], '%Y-%m-%dT%H:%M')
+    code, created = SemesterCode.objects.update_or_create(
+        semester=semester, defaults={
+            'teacher': teacher,
+            'code': generate_join_code(),
+            'expired_at': timezone.make_aware(expiration_time)
+        }
+    )
+    is_code_expired = code.expired_at < timezone.now()
+    return JsonResponse(json.dumps({'code': code.code, 'is_code_expired': is_code_expired}), safe=False)

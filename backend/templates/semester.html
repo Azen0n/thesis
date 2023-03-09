@@ -2,6 +2,10 @@
 {% block title %}
     {{ semester.course.title }}
 {% endblock %}
+{% block head_scripts %}
+    {% load static %}
+    <script type="text/javascript" src="{% static 'js/semester.js' %}"></script>
+{% endblock %}
 {% block content %}
     <div>
         <h3>{{ semester.course.title }}</h3>
@@ -9,19 +13,43 @@
         <span title="{{ semester.started_at|date:"d.m.Y G:i:s" }}">{{ semester.started_at|date:"j b" }}</span> –
         <span title="{{ semester.ended_at|date:"d.m.Y G:i:s" }}">{{ semester.ended_at|date:"j b Y" }}</span>
         <p><b>Описание</b><br>{{ semester.course.description }}</p>
-        {% if user.is_authenticated %}
-            {% if semester in user.semester_student_set.all %}
-                Вы записаны на курс
-            {% else %}
-                <form action="{% url 'enroll' semester.id %}" method="POST">
-                    {% csrf_token %}
-                    <button type="submit">Записаться</button>
-                </form>
+        {% if is_teacher %}
+            <div id="code">
+                {% if is_code_expired %}
+                    Срок действия кода истек.
+                {% elif code == '' %}
+                    Код для присоединения отсутствует.
+                {% else %}
+                    Код для присоединения: {{ code.code }}
+                {% endif %}
+            </div>
+            <form action="{% url 'generate_semester_code' semester.pk %}" method="POST" id="generate_code_form">
+                {% csrf_token %}
+                <button type="submit">Создать новый код</button>
+                <label for="expiration_date">Дата истечения</label>
+                <input type="datetime-local" id="expiration_date" value="{{ default_expiration_time }}"
+                       min="{{ min_expiration_time }}" max="{{ max_expiration_time }}">
+            </form>
+        {% else %}
+            {% if user.is_authenticated %}
+                {% if is_student %}
+                    Вы записаны на курс
+                {% else %}
+                    <form action="{% url 'enroll' semester.id %}" method="POST" id="join_code_form">
+                        {% csrf_token %}
+                        <label for="join_code">Код для присоединения:</label>
+                        <input id="join_code" style="text-transform: uppercase" type="text" maxlength="5">
+                        <span id="error"></span>
+                        <button type="submit">Записаться</button>
+                    </form>
+                {% endif %}
             {% endif %}
         {% endif %}
-        <form action="{% url 'next_practice_problem' semester.pk %}">
-            <input type="submit" value="Следующее практическое задание"/>
-        </form>
+        {% if user in semester.students.all %}
+            <form action="{% url 'next_practice_problem' semester.pk %}">
+                <input type="submit" value="Следующее практическое задание"/>
+            </form>
+        {% endif %}
         <p>Модули</p>
         <ol>
             {% for module in modules %}
@@ -36,7 +64,8 @@
                         <table>
                             {% for topic in module.topics %}
                                 <tr>
-                                    <td>{{ forloop.counter }}. <span title="Обязательный">{% if topic.topic.is_required %}
+                                    <td>{{ forloop.counter }}. <span
+                                            title="Обязательный">{% if topic.topic.is_required %}
                                         *{% endif %}</span></td>
                                     <td style="padding-right: 20px"><a
                                             href="{% url 'topic' semester.pk topic.topic.pk %}">{{ topic.topic.title }}</a>
