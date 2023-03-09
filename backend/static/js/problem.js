@@ -5,52 +5,56 @@ function main() {
     renderAnswer(answerElement);
     let resultElement = document.getElementById('result');
 
-    document.getElementById('answer_form').addEventListener(
-        'submit', function (e) {
-            validateAnswer(answerElement).then(
-                (data) => {
-                    let result = JSON.parse(data);
-                    console.log(result);
-                    let coefficient = result['coefficient'];
-                    if (coefficient === undefined) {
-                        coefficient = result['error'];
-                    }
-                    else {
-                        let submitButton = document.getElementById('submit_button');
-                        submitButton.remove();
-                    }
-                    resultElement.innerHTML = `${coefficient}`;
-                }
-            );
-            e.preventDefault();
-        }
-    )
+    document.getElementById('answer_form').addEventListener('submit', function (e) {
+        validateAnswer(answerElement).then((data) => {
+            let result = JSON.parse(data);
+            console.log(result);
+            let coefficient = result['coefficient'];
+            if (coefficient === undefined) {
+                coefficient = result['error'];
+            } else {
+                let submitButton = document.getElementById('submit_button');
+                submitButton.remove();
+            }
+            resultElement.innerHTML = `${coefficient}`;
+        });
+        e.preventDefault();
+    })
 }
 
 function renderAnswer(answerElement) {
     let answer = JSON.parse(answerElement.dataset.answer);
+    let correctAnswers = JSON.parse(answerElement.dataset.correct);
     switch (answer['type']) {
         case 'Multiple Choice Radio':
-            multipleChoiceRadio(answer, answerElement);
+            multipleChoiceRadio(answer, answerElement, correctAnswers);
             break;
         case 'Multiple Choice Checkbox':
-            multipleChoiceCheckbox(answer, answerElement);
+            multipleChoiceCheckbox(answer, answerElement, correctAnswers);
             break;
         case 'Fill In Single Blank':
-            fillInSingleBlank(answerElement);
+            fillInSingleBlank(answerElement, correctAnswers);
             break;
         default:
             console.error(`Unknown type '${answer['type']}'`);
     }
 }
 
-function multipleChoiceRadio(answer, answerElement) {
+function multipleChoiceRadio(answer, answerElement, correctAnswers) {
     let options = [];
     for (let option of answer['options']) {
-        options.push(`
+        if (correctAnswers == null) {
+            options.push(`
             <input type="radio" id="${option['id']}" value="${option['text']}" name="option">
             <label for="${option['id']}">${option['text']}</label><br>
         `);
+        } else {
+            let checked = option['id'] === correctAnswers['is_correct'] ? ' checked' : '';
+            options.push(`
+            <input type="radio" id="${option['id']}" value="${option['text']}" name="option"${checked} disabled>
+            <label for="${option['id']}">${option['text']}</label><br>
+        `);
+        }
     }
     answerElement.innerHTML = `
         <fieldset>
@@ -60,13 +64,21 @@ function multipleChoiceRadio(answer, answerElement) {
     `;
 }
 
-function multipleChoiceCheckbox(answer, answerElement) {
+function multipleChoiceCheckbox(answer, answerElement, correctAnswers) {
     let options = [];
     for (let option of answer['options']) {
-        options.push(`
+        if (correctAnswers == null) {
+            options.push(`
             <input type="checkbox" id="${option['id']}" value="${option['text']}" name="option">
             <label for="${option['id']}">${option['text']}</label><br>
         `);
+        } else {
+            let checked = correctAnswers['is_correct'].includes(option['id']) ? ' checked' : '';
+            options.push(`
+            <input type="checkbox" id="${option['id']}" value="${option['text']}" name="option"${checked} disabled>
+            <label for="${option['id']}">${option['text']}</label><br>
+        `);
+        }
     }
     answerElement.innerHTML = `
         <fieldset>
@@ -76,11 +88,18 @@ function multipleChoiceCheckbox(answer, answerElement) {
     `;
 }
 
-function fillInSingleBlank(answerElement) {
-    answerElement.innerHTML = `
+function fillInSingleBlank(answerElement, correctAnswers) {
+    if (correctAnswers == null) {
+        answerElement.innerHTML = `
         <p>Введите ответ</p>
         <input type="text"></span>
     `;
+    } else {
+        answerElement.innerHTML = `
+        <p>Введите ответ</p>
+        <input type="text" value="${correctAnswers['is_correct'].join(', ')}" disabled></span>
+    `;
+    }
 }
 
 function getAnswerData() {
@@ -131,8 +150,7 @@ function getMultipleChoiceCheckboxAnswer(answerElement) {
 
 function getFillInSingleBlankAnswer(answerElement) {
     let input = answerElement.querySelectorAll('input')[0];
-    return {'value': input.value,
-    'problem_id': answerElement.parentElement.parentElement.dataset.problem};
+    return {'value': input.value, 'problem_id': answerElement.parentElement.parentElement.dataset.problem};
 }
 
 async function validateAnswer(answerElement) {

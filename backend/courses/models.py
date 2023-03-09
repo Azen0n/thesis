@@ -145,3 +145,22 @@ class Hint(models.Model):
 
     def __str__(self):
         return self.text
+
+
+class SemesterCode(models.Model):
+    """Код для присоединения к курсу."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    semester = models.ForeignKey(Semester, on_delete=models.CASCADE)
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE)
+    code = models.CharField(max_length=Constants.JOIN_CODE_LENGTH)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expired_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['id', 'semester'],
+                                    name='unique_id_semester')
+        ]
+
+    def __str__(self):
+        return f'semester={self.semester}, code={self.code}'

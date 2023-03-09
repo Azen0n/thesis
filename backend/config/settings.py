@@ -57,6 +57,9 @@ class Constants:
     PROBLEM_SIMILARITY_PERCENT: float = 0.66
     MIN_CORRECT_ANSWER_COEFFICIENT: float = 0.66
 
+    JOIN_CODE_CHARACTERS: str = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789'
+    JOIN_CODE_LENGTH: int = 5
+
 
 # Application definition
 

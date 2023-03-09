@@ -11,7 +11,8 @@ from answers.models import (MultipleChoiceRadio, MultipleChoiceCheckbox,
                             FillInSingleBlank)
 from config.settings import Constants
 from courses.models import (Course, Semester, Module, Topic, Problem,
-                            THEORY_TYPES, Difficulty, Type, PRACTICE_TYPES)
+                            THEORY_TYPES, Difficulty, Type, PRACTICE_TYPES, SemesterCode)
+from courses.utils import generate_join_code
 
 random.seed(42)
 
@@ -23,6 +24,8 @@ def generate_test_data():
     semester = Semester.objects.filter(course__title='Test Course').first()
     if not semester:
         semester = create_test_semester()
+        teacher = create_teacher(semester)
+        create_join_code(semester, teacher)
         create_test_topics(semester.course, number_of_topics=10)
         create_problems(semester.course)
         create_random_answers(semester.course)
@@ -45,9 +48,16 @@ def create_test_semester() -> Semester:
     semester = Semester.objects.create(
         course=course,
         started_at=timezone.now(),
-        ended_at=timezone.now()
+        ended_at=timezone.now() + timezone.timedelta(days=30)
     )
     return semester
+
+
+def create_join_code(semester: Semester, teacher: User):
+    """Создает код для присоединения к курсу."""
+    code = generate_join_code()
+    SemesterCode.objects.create(semester=semester, teacher=teacher,
+                                code=code, expired_at=semester.ended_at)
 
 
 def create_superuser() -> User:
@@ -55,6 +65,15 @@ def create_superuser() -> User:
     return User.objects.create_superuser(username='admin',
                                          email='admin@mail.com',
                                          password='admin')
+
+
+def create_teacher(semester: Semester) -> User:
+    """Создает и возвращает пользователя teacher, назначая его преподавателем курса."""
+    teacher = User.objects.create_user(username='teacher',
+                                       email='teacher@mail.com',
+                                       password='teacher')
+    semester.teachers.add(teacher)
+    return teacher
 
 
 def create_test_topics(course: Course, number_of_topics: int = 10):
@@ -238,3 +257,14 @@ def reset_semesters_without_disenroll():
 def delete_everything():
     """Удаляет все объекты, связанные с курсами."""
     Course.objects.all().delete()
+
+
+def disenroll_student(username: str, course_title: str):
+    """Удаляет студента из курса."""
+    user = User.objects.filter(username=username).first()
+    semester = Semester.objects.filter(course__title=course_title).first()
+    if user is None or semester is None:
+        return
+    Progress.objects.filter(user=user).delete()
+    UserWeakestLinkState.objects.filter(user=user).delete()
+    semester.students.remove(user)

@@ -2,23 +2,35 @@ import json
 from uuid import UUID
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 
 from algorithm.models import Progress
 from algorithm.utils import create_user_progress_if_not_exists
 from algorithm.problem_selector import (next_theory_problem as get_next_theory_problem,
                                         next_practice_problem as get_next_practice_problem)
-from courses.models import Semester
+from courses.models import Semester, SemesterCode
 from answers.utils import get_answer_safe_data
 
 
 def enroll_semester(request: HttpRequest, pk: UUID) -> HttpResponse:
+    """Записывает пользователя на курс, если он не является преподавателем."""
+    if not request.user.is_authenticated:
+        return JsonResponse(json.dumps({'error': 'Войдите в систему.'}), safe=False)
     semester = Semester.objects.get(pk=pk)
+    if request.user in semester.teachers.all():
+        return JsonResponse(json.dumps({'error': 'Вы не можете записаться на свой курс.'}), safe=False)
     if semester.students.filter(pk=request.user.pk).first() is None:
+        code = json.loads(request.body).get('code', '')
+        semester_code = SemesterCode.objects.filter(semester=semester).first()
+        if semester_code.code != code.upper():
+            return JsonResponse(json.dumps({'error': 'Неверный код.'}), safe=False)
+        if semester_code.expired_at < timezone.now():
+            return JsonResponse(json.dumps({'error': 'Срок действия кода истек.'}), safe=False)
         semester.students.add(request.user)
         create_user_progress_if_not_exists(semester, request.user)
-    return redirect(f'/semesters/{semester.pk}')
+    return JsonResponse(json.dumps({'status': '200'}), safe=False)
 
 
 def next_theory_problem(request: HttpRequest,

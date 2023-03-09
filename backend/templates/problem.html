@@ -24,8 +24,8 @@
         {% endif %}
         <form id="answer_form" action="">
             {% csrf_token %}
-            <div id="answer" data-answer="{{ answer }}"></div>
-            {% if not is_answered and not is_topic_completed %}
+            <div id="answer" data-answer="{{ answer }}" data-correct="{{ correct_answers }}"></div>
+            {% if not is_answered and not is_topic_completed and not is_teacher %}
                 <button id="submit_button" type="submit">Отправить</button>
             {% endif %}
         </form>
