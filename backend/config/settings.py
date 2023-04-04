@@ -60,6 +60,8 @@ class Constants:
     JOIN_CODE_CHARACTERS: str = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789'
     JOIN_CODE_LENGTH: int = 5
 
+    MAX_NUMBER_OF_ATTEMPTS_PER_PRACTICE_PROBLEM: int = 2
+
 
 # Application definition
 

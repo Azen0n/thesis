@@ -122,6 +122,7 @@ class ProblemView(View):
                 'is_answered': is_answered,
                 'is_topic_completed': is_topic_completed,
                 'answer': json.dumps(answer),
+                'is_practice_problem': problem.type in PRACTICE_TYPES,
             }
         else:
             context = {

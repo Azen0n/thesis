@@ -1,11 +1,15 @@
 import json
+from typing import TypeAlias
+from urllib.parse import quote
 from uuid import UUID
 
+import requests
 from django.contrib.auth.models import User
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpRequest
 
-from algorithm.models import Progress
-from answers.models import MultipleChoiceRadio, MultipleChoiceCheckbox, FillInSingleBlank
+from algorithm.models import Progress, UserAnswer
+from answers.models import MultipleChoiceRadio, MultipleChoiceCheckbox, FillInSingleBlank, Code
+from config.settings import Constants
 from courses.models import Problem, Type, Semester, THEORY_TYPES, PRACTICE_TYPES
 
 
@@ -33,12 +37,22 @@ def get_answer_safe_data(problem: Problem) -> dict:
                 'type': 'Fill In Single Blank',
                 'problem_id': str(problem.id)
             }
+        case 'Code':
+            answer = {
+                'type': 'Code',
+                'problem_id': str(problem.id)
+            }
         case _:
             answer = {}
     return answer
 
 
-def validate_answer_by_type(data: dict) -> tuple[int, MultipleChoiceRadio | list[MultipleChoiceCheckbox] | str]:
+CorrectAnswerCoefficient: TypeAlias = int
+GivenAnswer: TypeAlias = MultipleChoiceRadio | list[MultipleChoiceCheckbox] | str | tuple[str, str]
+ValidatedAnswer: TypeAlias = tuple[CorrectAnswerCoefficient, GivenAnswer]
+
+
+def validate_answer_by_type(data: dict) -> ValidatedAnswer:
     """Возвращает коэффициент правильного ответа от 0 до 1 и выбранный вариант ответа."""
     match data['type']:
         case Type.MULTIPLE_CHOICE_RADIO.value:
@@ -49,7 +63,7 @@ def validate_answer_by_type(data: dict) -> tuple[int, MultipleChoiceRadio | list
             return validate_fill_in_single_blank(data.get('problem_id', None),
                                                  data.get('value', None))
         case Type.CODE.value:
-            raise NotImplementedError('Проверки практических заданий нет.')
+            return validate_code(data.get('problem_id', None), data.get('code', None))
         case other_type:
             raise ValueError(f'Неизвестный тип {other_type}.')
 
@@ -105,6 +119,35 @@ def validate_fill_in_single_blank(problem_id: str, value: str) -> tuple[int, str
     return 0, value
 
 
+def validate_code(problem_id: str, code: str):
+    """Проверяет код пользователя на тестах.
+    Возвращает коэффициент правильного ответа (0 или 1)
+    и кортеж из отправленного кода и результата проверки.
+    """
+    if code is None:
+        raise ValueError('Пустой ответ')
+    if not code.strip():
+        raise ValueError('Пустой ответ')
+    problem = Problem.objects.get(id=problem_id)
+    tests = Code.objects.get(problem=problem).tests
+    response = requests.post('http://localhost:8080/run_tests'
+                             f'?tests={quote(tests)}&code={quote(code)}')
+    result = response.json().get('result', None)
+    if result is None:
+        raise ValueError('Результат проверки кода не получен.')
+    coefficient = int(is_code_solved(result))
+    return coefficient, (code, result)
+
+
+def is_code_solved(code_test_result: str) -> bool:
+    """Возвращает True, если код успешно прошел проверку на тестах или False,
+    если один из тестов не пройден или возникла ошибка.
+    """
+    if code_test_result == 'all good':
+        return True
+    return False
+
+
 def get_correct_answers(problem_id: UUID) -> dict:
     """Возвращает словарь с верными ответами на задание."""
     problem = Problem.objects.get(pk=problem_id)
@@ -145,3 +188,53 @@ def is_problem_main_topic_completed(user: User, semester: Semester, problem: Pro
         if progress.is_practice_completed():
             return True
     return False
+
+
+def validate_answer_user_access(user: User, semester: Semester, problem: Problem) -> JsonResponse | None:
+    """Проверяет, доступно ли задание для решения текущему пользователю.
+    Возвращает JsonResponse с сообщением об ошибке или None, если задание доступно.
+    """
+    if user not in semester.students.all():
+        return JsonResponse(json.dumps({'error': 'Вы не записаны на курс.'}), safe=False)
+    if not is_parent_topic_completed(user, semester, problem):
+        return JsonResponse(json.dumps({'error': f'Необходимо завершить тест по теории по теме'
+                                                 f' {problem.main_topic.parent_topic}.'}), safe=False)
+    if problem.type in PRACTICE_TYPES:
+        progress = Progress.objects.get(user=user, semester=semester, topic=problem.main_topic)
+        if not progress.is_theory_low_reached():
+            return JsonResponse(json.dumps({'error': 'Тест по теории не завершен.'}), safe=False)
+    if is_problem_main_topic_completed(user, semester, problem):
+        return JsonResponse(json.dumps({'error': 'Набран максимальный балл.'}), safe=False)
+    if problem.type in PRACTICE_TYPES:
+        json_response = validate_practice_problem(user, semester, problem)
+        if json_response is not None:
+            return json_response
+    if UserAnswer.objects.filter(problem=problem, semester=semester, user=user).exists():
+        return JsonResponse(json.dumps({'error': 'Вы уже отправили решение по этому заданию.'}), safe=False)
+    return None
+
+
+def validate_practice_problem(user: User, semester: Semester, problem: Problem) -> JsonResponse | None:
+    """Проверяет, решалось ли данное практическое задание пользователем.
+    Если исчерпано количество попыток на решение задания или задание уже решено, возвращает
+    JsonResponse с сообщением об ошибке.
+    Если задание решается впервые, возвращает None.
+    """
+    if problem.type not in PRACTICE_TYPES:
+        return None
+    last_answer = UserAnswer.objects.filter(
+        problem=problem,
+        semester=semester,
+        user=user
+    ).order_by('-created_at').first()
+    if last_answer is not None:
+        if last_answer.is_solved:
+            return JsonResponse(json.dumps({'error': 'Вы уже отправили решение по этому заданию.'}), safe=False)
+    number_of_answers = UserAnswer.objects.filter(
+        problem=problem,
+        semester=semester,
+        user=user
+    ).count()
+    if number_of_answers >= Constants.MAX_NUMBER_OF_ATTEMPTS_PER_PRACTICE_PROBLEM:
+        return JsonResponse(json.dumps({'error': 'Вы истратили все попытки на решение этого задания.'}), safe=False)
+    return None

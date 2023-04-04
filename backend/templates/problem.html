@@ -29,8 +29,16 @@
                         data-correct="{{ correct_answers }}
                     {% endif %}">
             </div>
-            {% if not is_answered and not is_topic_completed and not is_teacher %}
-                <button id="submit_button" type="submit">Отправить</button>
+            {% if is_practice_problem %}
+                <label for="stdin">Ввод (stdin, через запятую)
+                    <input id="stdin">
+                </label>
+                <button id="run_stdin_button" type="button">Запустить</button>
+                <button id="run_tests_button" type="submit">Отправить</button>
+            {% else %}
+                {% if not is_answered and not is_topic_completed and not is_teacher %}
+                    <button id="submit_button" type="submit">Отправить</button>
+                {% endif %}
             {% endif %}
         </form>
         <div id="result"></div>

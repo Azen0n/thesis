@@ -19,7 +19,21 @@ function main() {
             resultElement.innerHTML = `${coefficient}`;
         });
         e.preventDefault();
-    })
+    });
+    document.getElementById('run_stdin_button').addEventListener('click', function () {
+        runStdin(answerElement).then((data) => {
+            let result = JSON.parse(data);
+            console.log(result);
+            resultElement.innerHTML = `${result}`;
+        });
+    });
+    document.getElementById('run_tests_button').addEventListener('click', function () {
+        runTests(answerElement).then((data) => {
+            let result = JSON.parse(data);
+            console.log(result);
+            resultElement.innerHTML = `${result}`;
+        });
+    });
 }
 
 function renderAnswer(answerElement) {
@@ -37,6 +51,9 @@ function renderAnswer(answerElement) {
             break;
         case 'Fill In Single Blank':
             fillInSingleBlank(answerElement, correctAnswers);
+            break;
+        case 'Code':
+            code(answerElement, correctAnswers);
             break;
         default:
             console.error(`Unknown type '${answer['type']}'`);
@@ -105,6 +122,15 @@ function fillInSingleBlank(answerElement, correctAnswers) {
     }
 }
 
+function code(answerElement, correctAnswers) {
+    if (correctAnswers == null) {
+        answerElement.innerHTML = `
+        <p>Код на Python (stdin -> stdout)</p>
+        <textarea id="code" rows="15" cols="40"></textarea>
+    `;
+    }
+}
+
 function getAnswerData() {
     let answerElement = document.getElementById('answer');
     let answerType = JSON.parse(answerElement.dataset.answer)['type'];
@@ -121,6 +147,10 @@ function getAnswerData() {
         case 'Fill In Single Blank':
             data = getFillInSingleBlankAnswer(answerElement);
             data['type'] = 'Fill In Single Blank';
+            break;
+        case 'Code':
+            data = getCodeAnswer(answerElement);
+            data['type'] = 'Code';
             break;
         default:
             console.error(`Unknown type '${answerType}'`);
@@ -156,9 +186,46 @@ function getFillInSingleBlankAnswer(answerElement) {
     return {'value': input.value, 'problem_id': answerElement.parentElement.parentElement.dataset.problem};
 }
 
+function getCodeAnswer(answerElement) {
+    let input = answerElement.querySelectorAll('textarea')[0];
+    return {'code': input.value, 'problem_id': answerElement.parentElement.parentElement.dataset.problem};
+}
+
 async function validateAnswer(answerElement) {
     const problemElement = answerElement.parentElement.parentElement;
     const url = `/semesters/${problemElement.dataset.semester}/problems/${problemElement.dataset.problem}/validate_answer/`;
+    const csrf = document.getElementsByName('csrfmiddlewaretoken')[0].value;
+    let response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf
+        },
+        body: JSON.stringify(getAnswerData())
+    });
+    return response.json();
+}
+
+async function runStdin(answerElement) {
+    const problemElement = answerElement.parentElement.parentElement;
+    const url = `/semesters/${problemElement.dataset.semester}/problems/${problemElement.dataset.problem}/run_stdin/`;
+    const csrf = document.getElementsByName('csrfmiddlewaretoken')[0].value;
+    let data = getAnswerData();
+    data['stdin'] = document.getElementById('stdin').value;
+    let response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf
+        },
+        body: JSON.stringify(data)
+    });
+    return response.json();
+}
+
+async function runTests(answerElement) {
+    const problemElement = answerElement.parentElement.parentElement;
+    const url = `/semesters/${problemElement.dataset.semester}/problems/${problemElement.dataset.problem}/run_tests/`;
     const csrf = document.getElementsByName('csrfmiddlewaretoken')[0].value;
     let response = await fetch(url, {
         method: 'POST',

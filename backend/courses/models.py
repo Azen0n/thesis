@@ -109,6 +109,7 @@ THEORY_TYPES = [
 
 PRACTICE_TYPES = [
     Type.FILL_IN_SINGLE_BLANK,
+    Type.CODE,
 ]
 
 
