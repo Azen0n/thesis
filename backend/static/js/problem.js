@@ -24,7 +24,10 @@ function main() {
 
 function renderAnswer(answerElement) {
     let answer = JSON.parse(answerElement.dataset.answer);
-    let correctAnswers = JSON.parse(answerElement.dataset.correct);
+    let correctAnswers = answerElement.dataset.correct;
+    if (correctAnswers !== undefined) {
+        correctAnswers = JSON.parse(answerElement.dataset.correct);
+    }
     switch (answer['type']) {
         case 'Multiple Choice Radio':
             multipleChoiceRadio(answer, answerElement, correctAnswers);
