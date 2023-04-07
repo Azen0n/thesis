@@ -109,5 +109,8 @@ def change_user_skill_level(progress: Progress, user_answer: UserAnswer):
     if user_answer.is_solved:
         progress.skill_level += difficulty_coefficient
     else:
-        progress.skill_level -= difficulty_coefficient
+        if progress.skill_level - difficulty_coefficient < Constants.ALGORITHM_SKILL_LEVEL_LOWER_BOUND:
+            progress.skill_level = Constants.ALGORITHM_SKILL_LEVEL_LOWER_BOUND
+        else:
+            progress.skill_level -= difficulty_coefficient
     progress.save()
