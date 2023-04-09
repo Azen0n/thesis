@@ -26,7 +26,7 @@ def generate_test_data():
         semester = create_test_semester()
         teacher = create_teacher(semester)
         create_join_code(semester, teacher)
-        create_test_topics(semester.course, number_of_topics=10)
+        create_test_topics(semester.course, number_of_topics=21)
         create_problems(semester.course)
         create_random_answers(semester.course)
         create_random_topic_graph(Topic.objects.filter(module__course=semester.course))
@@ -107,11 +107,11 @@ def create_problems(course: Course,
     for topic in course.module_set.filter(title='Test Module').first().topic_set.all():
         for i in range(number_of_theory_problems):
             create_problem(f'Theory Problem {theory_problem_counter}', topic,
-                           available_sub_topics, THEORY_TYPES)
+                           available_sub_topics, [Type.MULTIPLE_CHOICE_RADIO])
             theory_problem_counter += 1
         for i in range(number_of_practice_problems):
             create_problem(f'Practice Problem {practice_problem_counter}', topic,
-                           available_sub_topics, PRACTICE_TYPES)
+                           available_sub_topics, [Type.FILL_IN_SINGLE_BLANK])
             practice_problem_counter += 1
         available_sub_topics.append(topic)
 
