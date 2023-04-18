@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.db.models import QuerySet, Q
 
 from algorithm.models import UserAnswer, Progress
+from algorithm.problem_selector.points_maximization import get_problems_with_max_value
 from config.settings import Constants
 from courses.models import (Difficulty, THEORY_TYPES, PRACTICE_TYPES, Semester,
                             Problem, Topic)
@@ -151,3 +152,29 @@ def filter_wrongly_answered_theory_problems(progress: Progress) -> QuerySet[Prob
         is_solved=False
     ).order_by('-difficulty')
     return solved_problems
+
+
+def filter_placement_problems(progress: Progress, problems: list[Problem]) -> list[Problem]:
+    """Возвращает список теоретических заданий для калибровки."""
+    difficulty = get_suitable_problem_difficulty(progress.skill_level)
+    problems = list(filter(lambda x: x.difficulty <= difficulty, problems))
+    problems = sorted(problems, key=lambda x: x.difficulty, reverse=True)
+    return problems
+
+
+def increase_theory_problems_difficulty(progress: Progress) -> list[Problem] | None:
+    """Повышает сложность теоретических заданий на один уровень,
+    и возвращает список заданий со сложностью равной ей или ниже.
+    Возвращает None, если превышена максимальная сложность.
+    """
+    try:
+        difficulty = Difficulty(get_suitable_problem_difficulty(progress.skill_level).value + 1)
+    except ValueError:
+        return None
+    problems = filter_problems(progress.user, progress.semester).filter(
+        main_topic=progress.topic,
+        type__in=THEORY_TYPES,
+        difficulty__lte=difficulty
+    )
+    problems = get_problems_with_max_value(progress.user, progress.semester, problems)
+    return problems

@@ -3,10 +3,11 @@ from django.contrib.auth.models import User
 from algorithm.models import (Progress, UserWeakestLinkState, WeakestLinkState,
                               WeakestLinkProblem)
 from config.settings import Constants
-from courses.models import Problem, Semester
+from courses.models import Problem, Semester, Difficulty
 from .points_maximization import get_problems_with_max_value
-from .utils import filter_practice_problems, filter_theory_problems, get_last_theory_user_answers, \
-    get_suitable_problem_difficulty
+from .utils import (filter_practice_problems, filter_theory_problems,
+                    get_last_theory_user_answers, filter_placement_problems,
+                    increase_theory_problems_difficulty)
 
 
 def next_theory_problem(progress: Progress) -> Problem:
@@ -22,16 +23,13 @@ def next_theory_problem(progress: Progress) -> Problem:
     problems = filter_theory_problems(progress)
     problems = get_problems_with_max_value(progress.user, progress.semester, problems)
     last_answers = get_last_theory_user_answers(progress.user, progress.topic)
-    try:
-        if len(last_answers) < Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
-            difficulty = get_suitable_problem_difficulty(progress.skill_level)
-            problems = list(filter(lambda x: x.difficulty <= difficulty, problems))
-            problem = sorted(problems, key=lambda x: x.difficulty, reverse=True)[0]
-        else:
-            problem = problems[0]
-    except IndexError:
+    if len(last_answers) < Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
+        problems = filter_placement_problems(progress, problems)
+    if not problems:
+        problems = increase_theory_problems_difficulty(progress)
+    if not problems or problems is None:
         raise NotImplementedError('Доступных теоретических заданий нет.')
-    return problem
+    return problems[0]
 
 
 def next_practice_problem(user: User, semester: Semester) -> Problem:
@@ -44,9 +42,12 @@ def next_practice_problem(user: User, semester: Semester) -> Problem:
             is_solved__isnull=True
         ).order_by('group_number').first()
         return weakest_link_problem.problem
-    problems = filter_practice_problems(user, semester).order_by('title')
-    try:
-        problem = get_problems_with_max_value(user, semester, problems)[0]
-    except IndexError:
+    problems = filter_practice_problems(user, semester)
+    if not problems:
+        problems = filter_practice_problems(user, semester, max_difficulty=Difficulty.NORMAL)
+    if not problems:
+        problems = filter_practice_problems(user, semester, max_difficulty=Difficulty.HARD)
+    problems = get_problems_with_max_value(user, semester, problems)
+    if not problems:
         raise NotImplementedError('Доступных практических заданий нет.')
-    return problem
+    return problems[0]
