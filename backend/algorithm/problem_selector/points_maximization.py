@@ -32,7 +32,16 @@ def calculate_problem_value(user: User, semester: Semester, problem: Problem) ->
     skill_level_coefficient = Constants.AVERAGE_SKILL_LEVEL / progress.skill_level
     weighted_time_to_solve = problem.time_to_solve_in_seconds * skill_level_coefficient
     points = calculate_points_if_problem_solved_correctly(progress, problem)
-    return math.inf if points == 0 else weighted_time_to_solve / points
+    return math.inf if points == 0 else weighted_time_to_solve / (points * threshold_coefficient(progress))
+
+
+def threshold_coefficient(progress: Progress) -> float:
+    """Возвращает коэффициент ценности темы в зависимости от количества баллов."""
+    if progress.points < Constants.TOPIC_THRESHOLD_LOW:
+        return Constants.TOPIC_THRESHOLD_LOW_COEFFICIENT
+    if progress.points < Constants.TOPIC_THRESHOLD_MEDIUM:
+        return Constants.TOPIC_THRESHOLD_MEDIUM_COEFFICIENT
+    return Constants.TOPIC_THRESHOLD_HIGH_COEFFICIENT
 
 
 def calculate_points_if_problem_solved_correctly(progress: Progress, problem: Problem) -> float:
