@@ -31,7 +31,7 @@ def start_weakest_link_when_ready(user: User, semester: Semester) -> Problem | N
             if not topics:
                 return
             max_difficulty = min(problems[0].difficulty, problems[1].difficulty)
-            fill_weakest_link_queue(user, semester, topics, Difficulty(max_difficulty))
+            fill_weakest_link_queue(user, semester, set(topics), Difficulty(max_difficulty))
 
 
 def get_practice_problems_for_weakest_link(user: User, semester: Semester,
@@ -66,11 +66,19 @@ def is_problems_similar(problem1: Problem, problem2: Problem) -> bool:
         return False
     topics1 = get_topics_of_problems(problem1)
     topics2 = get_topics_of_problems(problem2)
-    intersection = set(topics1).intersection(topics2)
-    return len(intersection) / len(topics1) > Constants.PROBLEM_SIMILARITY_PERCENT
+    return is_topics_similar(topics1, topics2)
 
 
-def remove_completed_topics(user: User, semester: Semester, topics: list[Topic]) -> list[Topic]:
+def is_topics_similar(topics1: set[Topic], topics2: set[Topic]) -> bool:
+    """Сравнивает два множества тем на сходство. Схожими считаются множества,
+    в которых темы пересекаются на 66% и более.
+    """
+    intersection = topics1.intersection(topics2)
+    largest_topics_length = max(len(topics1), len(topics2))
+    return len(intersection) / largest_topics_length > Constants.PROBLEM_SIMILARITY_PERCENT
+
+
+def remove_completed_topics(user: User, semester: Semester, topics: set[Topic]) -> QuerySet[Topic]:
     """Удаляет из списка темы, по практике которых набран максимальный балл."""
     progresses = Progress.objects.filter(
         user=user,
@@ -83,7 +91,7 @@ def remove_completed_topics(user: User, semester: Semester, topics: list[Topic])
 
 @transaction.atomic
 def fill_weakest_link_queue(user: User, semester: Semester,
-                            topics: list[Topic], max_difficulty: Difficulty):
+                            topics: set[Topic], max_difficulty: Difficulty):
     """Находит похожие задания с темами неправильно решенных заданий
     problem1 и problem2, после чего помещает их в очередь слабого звена
     WeakestLinkProblem.
@@ -96,7 +104,7 @@ def fill_weakest_link_queue(user: User, semester: Semester,
         group_problems = find_problems_with_topics(topic_group, problems)
         group_problems = get_problems_with_max_value(user, semester, group_problems)
         weakest_link_problems = group_problems[:Constants.WEAKEST_LINK_MAX_PROBLEMS_PER_GROUP]
-        if not weakest_link_problems:
+        if len(weakest_link_problems) < Constants.WEAKEST_LINK_MAX_PROBLEMS_PER_GROUP:
             continue
         for problem in weakest_link_problems:
             WeakestLinkProblem.objects.create(user=user, group_number=group_number,
@@ -110,7 +118,7 @@ def fill_weakest_link_queue(user: User, semester: Semester,
 
 
 def add_topics_to_weakest_link_queue(user: User, semester: Semester,
-                                     topic_groups: list[tuple[int, list[Topic]]]):
+                                     topic_groups: list[tuple[int, set[Topic]]]):
     """Добавляет потенциально проблемные темы в очередь слабого звена.
 
     topic_groups — список кортежей из номера группы и списка тем этой группы.
@@ -125,27 +133,28 @@ def add_topics_to_weakest_link_queue(user: User, semester: Semester,
             )
 
 
-def get_topics_of_problems(*args: Problem) -> list[Topic]:
+def get_topics_of_problems(*args: Problem) -> set[Topic]:
     """Возвращает список уникальных тем заданий."""
     topics = []
     for problem in args:
         topics.append(problem.main_topic)
         topics.extend(problem.sub_topics.all())
-    return list(set(topics))
+    return set(topics)
 
 
-def find_problems_with_topics(topics: list[Topic],
+def find_problems_with_topics(topics: set[Topic],
                               problems: QuerySet[Problem]) -> QuerySet[Problem]:
     """Возвращает QuerySet с заданиями, у которых основная тема и подтемы
     находятся в topics. Задания упорядочены в порядке убывания сложности.
 
     problems — доступные для пользователя задания.
     """
-    filtered_problems = problems.filter(main_topic__in=topics, sub_topics__in=topics)
-    if len(filtered_problems) < Constants.WEAKEST_LINK_MAX_PROBLEMS_PER_GROUP:
-        filtered_problems |= problems.filter(main_topic__in=topics)
-        filtered_problems = filtered_problems.distinct()
-    return filtered_problems.order_by('-difficulty')
+    filtered_problem_ids = []
+    for problem in problems:
+        problem_topics = get_topics_of_problems(problem)
+        if is_topics_similar(topics, problem_topics):
+            filtered_problem_ids.append(problem.id)
+    return Problem.objects.filter(id__in=filtered_problem_ids)
 
 
 def change_weakest_link_problem_is_solved(user: User, semester: Semester, problem: Problem,

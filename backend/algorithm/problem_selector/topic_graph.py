@@ -25,12 +25,14 @@ class TopicGraph:
         for edge in self.edges:
             self.weights[edge.topic1.title][edge.topic2.title] = edge.weight
 
-    def split_topics_in_two_groups(self, topics: list[Topic]) -> tuple[list[Topic], list[Topic]]:
+    def split_topics_in_two_groups(self, topics: set[Topic]) -> tuple[set[Topic], set[Topic]]:
         """Разделяет темы на две группы с максимальной связью
         между друг другом.
         """
-        if len(topics) in [1, 2]:
-            return topics[:1], topics[1:]
+        if len(topics) == 1:
+            return topics, set()
+        if len(topics) == 2:
+            return {topics.pop()}, {topics.pop()}
         group_combinations1, group_combinations2 = get_group_combinations(topics)
         group_combinations1 = list(group_combinations1)
         group_combinations2 = list(group_combinations2)
@@ -44,7 +46,7 @@ class TopicGraph:
                 weight += self.calc_topic_group_weight(combination2)
                 if weight > max_weight:
                     max_weight = weight
-                    final_groups = list(combination1), list(combination2)
+                    final_groups = set(combination1), set(combination2)
         return final_groups
 
     def calc_topic_group_weight(self, topics: tuple[Topic]) -> float:
@@ -56,7 +58,7 @@ class TopicGraph:
         return weight
 
 
-def get_group_combinations(topics: list[Topic]) -> tuple[combinations, combinations]:
+def get_group_combinations(topics: set[Topic]) -> tuple[combinations, combinations]:
     """Делит темы на две равные группы и возвращает все сочетания тем
     внутри этих групп.
     """
