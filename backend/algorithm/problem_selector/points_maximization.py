@@ -3,7 +3,6 @@ from django.contrib.auth.models import User
 from django.db.models import QuerySet
 
 from algorithm.models import Progress
-from answers.points_management import DIFFICULTY_TO_POINTS_THRESHOLD
 from config.settings import Constants
 from courses.models import Semester, Problem, Difficulty, Type, THEORY_TYPES
 
@@ -11,6 +10,12 @@ POINTS_BY_DIFFICULTY = {
     Difficulty.EASY.value: Constants.POINTS_EASY,
     Difficulty.NORMAL.value: Constants.POINTS_NORMAL,
     Difficulty.HARD.value: Constants.POINTS_HARD,
+}
+
+DIFFICULTY_TO_POINTS_THRESHOLD = {
+    Difficulty.EASY.value: Constants.TOPIC_THRESHOLD_LOW,
+    Difficulty.NORMAL.value: Constants.TOPIC_THRESHOLD_MEDIUM,
+    Difficulty.HARD.value: Constants.TOPIC_THRESHOLD_HIGH,
 }
 
 

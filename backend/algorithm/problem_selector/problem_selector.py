@@ -1,13 +1,13 @@
 from django.contrib.auth.models import User
 
-from algorithm.models import (Progress, UserWeakestLinkState, WeakestLinkState,
-                              WeakestLinkProblem)
+from algorithm.models import Progress, UserWeakestLinkState, WeakestLinkState
 from config.settings import Constants
 from courses.models import Problem, Semester, Difficulty
 from .points_maximization import get_problems_with_max_value
 from .utils import (filter_practice_problems, filter_theory_problems,
                     get_last_theory_user_answers, filter_placement_problems,
-                    increase_theory_problems_difficulty)
+                    filter_theory_problems_increase_difficulty)
+from .weakest_link import next_weakest_link_problem
 
 
 def next_theory_problem(progress: Progress) -> Problem:
@@ -26,7 +26,7 @@ def next_theory_problem(progress: Progress) -> Problem:
     if len(last_answers) < Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
         problems = filter_placement_problems(progress, problems)
     if not problems:
-        problems = increase_theory_problems_difficulty(progress)
+        problems = filter_theory_problems_increase_difficulty(progress)
     if not problems or problems is None:
         raise NotImplementedError('Доступных теоретических заданий нет.')
     return problems[0]
@@ -36,12 +36,9 @@ def next_practice_problem(user: User, semester: Semester) -> Problem:
     """Возвращает следующее практическое задание по текущей теме студента."""
     user_weakest_link_state = UserWeakestLinkState.objects.get(user=user, semester=semester).state
     if user_weakest_link_state == WeakestLinkState.IN_PROGRESS:
-        weakest_link_problem = WeakestLinkProblem.objects.filter(
-            user=user,
-            semester=semester,
-            is_solved__isnull=True
-        ).order_by('group_number').first()
-        return weakest_link_problem.problem
+        problem = next_weakest_link_problem(user, semester)
+        if problem is not None:
+            return problem
     problems = filter_practice_problems(user, semester)
     if not problems:
         problems = filter_practice_problems(user, semester, max_difficulty=Difficulty.NORMAL)

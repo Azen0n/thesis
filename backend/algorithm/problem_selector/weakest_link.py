@@ -113,8 +113,6 @@ def fill_weakest_link_queue(user: User, semester: Semester,
     if final_topic_groups:
         add_topics_to_weakest_link_queue(user, semester, final_topic_groups)
         update_user_weakest_link_state(user, semester, WeakestLinkState.IN_PROGRESS)
-    else:
-        raise NotImplementedError('Доступные задания с темами группы не найдены.')
 
 
 def add_topics_to_weakest_link_queue(user: User, semester: Semester,
@@ -180,13 +178,18 @@ def delete_group_topics_and_problems_when_completed(user: User, semester: Semest
     group_numbers = problems.values_list('group_number', flat=True).distinct()
     for group_number in group_numbers:
         if is_topic_group_completed(user, semester, group_number, is_successful=True):
-            WeakestLinkProblem.objects.filter(user=user, semester=semester,
-                                              group_number=group_number).delete()
-            WeakestLinkTopic.objects.filter(user=user, semester=semester,
-                                            group_number=group_number).delete()
+            delete_group_topics_and_problems(user, semester, group_number)
         elif is_topic_group_completed(user, semester, group_number, is_successful=False):
             WeakestLinkProblem.objects.filter(user=user, semester=semester,
                                               group_number=group_number).delete()
+
+
+def delete_group_topics_and_problems(user: User, semester: Semester, group_number: int):
+    """Удаляет темы и задания из очереди слабого звена по номеру группы."""
+    WeakestLinkProblem.objects.filter(user=user, semester=semester,
+                                      group_number=group_number).delete()
+    WeakestLinkTopic.objects.filter(user=user, semester=semester,
+                                    group_number=group_number).delete()
 
 
 def is_topic_group_completed(user: User, semester: Semester, group_number: int,
@@ -265,3 +268,33 @@ def stop_weakest_link_when_practice_completed(user: User, semester: Semester):
                 WeakestLinkProblem.objects.filter(user=user, semester=semester).delete()
                 update_user_weakest_link_state(user, semester, WeakestLinkState.NONE)
                 return
+
+
+def next_weakest_link_problem(user: User, semester: Semester) -> Problem | None:
+    """Возвращает следующее задание из очереди слабого звена.
+    Если по основной теме задания набран балл на максимальную оценку,
+    группа удаляется вне зависимости от количества решенных заданий.
+    Если все группы удалены, возвращает None.
+    """
+    group_numbers = WeakestLinkProblem.objects.filter(
+        user=user,
+        semester=semester,
+        is_solved__isnull=True
+    ).order_by('group_number').values_list('group_number', flat=True).distinct()
+    for group_number in group_numbers:
+        weakest_link_problem = WeakestLinkProblem.objects.filter(
+            user=user,
+            semester=semester,
+            is_solved__isnull=True,
+            group_number=group_number
+        ).first()
+        progress = Progress.objects.get(
+            user=user,
+            semester=semester,
+            topic=weakest_link_problem.problem.main_topic
+        )
+        if progress.points < Constants.TOPIC_THRESHOLD_HIGH:
+            return weakest_link_problem.problem
+        delete_group_topics_and_problems(user, semester, group_number)
+    weakest_link_done(user, semester)
+    return None
