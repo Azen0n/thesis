@@ -69,10 +69,11 @@ def create_superuser() -> User:
 
 def create_teacher(semester: Semester) -> User:
     """Создает и возвращает пользователя teacher, назначая его преподавателем курса."""
-    teacher = User.objects.create_user(username='teacher',
-                                       email='teacher@mail.com',
-                                       password='teacher')
-    semester.teachers.add(teacher)
+    teacher, _ = User.objects.get_or_create(username='teacher',
+                                         email='teacher@mail.com',
+                                         password='teacher')
+    if teacher not in semester.teachers.all():
+        semester.teachers.add(teacher)
     return teacher
 
 
@@ -104,7 +105,7 @@ def create_problems(course: Course,
     theory_problem_counter = 1
     practice_problem_counter = 1
     available_sub_topics = []
-    for topic in course.module_set.filter(title='Test Module').first().topic_set.all():
+    for topic in course.module_set.filter(title='Test Module').first().topic_set.all().order_by('created_at'):
         for i in range(number_of_theory_problems):
             create_problem(f'Theory Problem {theory_problem_counter}', topic,
                            available_sub_topics, [Type.MULTIPLE_CHOICE_RADIO])
@@ -141,10 +142,10 @@ def create_problem(problem_title: str, topic: Topic,
 def generate_time_to_solve_in_seconds(types: list[Type], difficulty: Difficulty,
                                       number_of_sub_topics: int) -> float:
     """Возвращает количество секунд на решение задания."""
-    if types == THEORY_TYPES:
+    if set(types).issubset(set(THEORY_TYPES)):
         time_to_solve_in_seconds = random.randint(1, 5) + (
                 100 * difficulty.value - 100) + 10 * (1 + number_of_sub_topics)
-    elif types == PRACTICE_TYPES:
+    elif set(types).issubset(set(PRACTICE_TYPES)):
         time_to_solve_in_seconds = random.randint(1, 5) * 5 + (
                 500 * difficulty.value - 200) + 10 * (1 + number_of_sub_topics)
     else:
@@ -257,6 +258,7 @@ def reset_semesters_without_disenroll():
 def delete_everything():
     """Удаляет все объекты, связанные с курсами."""
     Course.objects.all().delete()
+    User.objects.all().delete()
 
 
 def disenroll_student(username: str, course_title: str):

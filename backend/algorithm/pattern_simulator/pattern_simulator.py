@@ -4,17 +4,21 @@ from dataclasses import dataclass
 
 from django.contrib.auth.models import User
 from django.db import IntegrityError
+from django.db.models import F
 from django.test import RequestFactory
 from django.urls import reverse
 
 from algorithm.models import Progress
 from algorithm.pattern_simulator.patterns import Pattern, Style
+from algorithm.pattern_simulator.student_stats_writer import write_student_stats_to_file
 from algorithm.problem_selector import next_theory_problem, next_practice_problem
 from algorithm.views import enroll_semester
 from answers.models import MultipleChoiceRadio, FillInSingleBlank
 from answers.views import validate_answer
 from config.settings import Constants
 from courses.models import Semester, SemesterCode, Problem, Type, Topic
+
+random.seed(42)
 
 
 @dataclass
@@ -80,7 +84,7 @@ class PatternSimulator:
 
     def theory_first_simulation(self):
         """Сначала проходится теория по всем темам, затем практика."""
-        topics = self.semester.course.module_set.first().topic_set.all()
+        topics = self.semester.course.module_set.first().topic_set.all().order_by('created_at')
         for topic in topics:
             self.complete_topic_theory_to_low_points(topic)
         for topic in topics:
@@ -125,28 +129,31 @@ class PatternSimulator:
         request.user = self.user
         return request
 
-    def is_all_practice_completed(self) -> bool:
-        """Возвращает True, если по практике во всех темах набран необходимый балл."""
-        practice_points = self.get_all_practice_points()
-        target_points = Constants.TOPIC_PRACTICE_MAX_POINTS * self.pattern.target_points_coefficient
+    def is_all_topics_completed(self) -> bool:
+        """Возвращает True, если по всем темах набран необходимый балл."""
+        practice_points = self.get_all_topic_points()
+        max_points = Constants.TOPIC_THEORY_MAX_POINTS + Constants.TOPIC_PRACTICE_MAX_POINTS
+        target_points = max_points * self.pattern.target_points_coefficient
         return not any([points < target_points for points in practice_points])
 
-    def get_all_practice_points(self) -> list[float]:
+    def get_all_topic_points(self) -> list[float]:
         """Возвращает список баллов по практике."""
-        return Progress.objects.filter(
-            user=self.user,
-            semester=self.semester
-        ).values_list('practice_points', flat=True)
+        progresses = Progress.objects.filter(user=self.user, semester=self.semester)
+        total_points = progresses.annotate(
+            total_points=F('theory_points') + F('practice_points')
+        ).values_list('total_points', flat=True)
+        return total_points
 
     def complete_practice_in_all_topics(self):
         """Завершает практику по всем темам."""
-        while not self.is_all_practice_completed():
+        while not self.is_all_topics_completed():
             problem = next_practice_problem(self.user, self.semester)
             self.solve_problem(problem, is_solved=self.pattern.is_next_problem_solved())
 
     def export_simulation_results(self):
         """Записывает результат симуляции в тестовый файл."""
-        raise NotImplementedError()
+        filepath = f'output{random.randint(int(1e5), int(1e6))}.txt'
+        write_student_stats_to_file(filepath, self.user, self.semester)
 
 
 def solve_multiple_choice_radio(problem: Problem, is_solved: bool) -> MultipleChoiceRadio:

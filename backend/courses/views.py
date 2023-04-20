@@ -159,9 +159,12 @@ def generate_semester_code(request: HttpRequest, semester_pk: UUID) -> HttpRespo
     return JsonResponse(json.dumps({'code': code.code, 'is_code_expired': is_code_expired}), safe=False)
 
 
+random.seed(42)
+
+
 def debug_pattern_simulator(request: HttpRequest):
 
-    def generator(self) -> Generator[bool, None, None]:
+    def generator() -> Generator[bool, None, None]:
         number_of_problems_solved = 0
         while True:
             if number_of_problems_solved < 15:
@@ -175,7 +178,7 @@ def debug_pattern_simulator(request: HttpRequest):
             yield random.uniform(0, 1) < chance
             number_of_problems_solved += 1
 
-    pattern = Pattern(target_points_coefficient=0.76,
+    pattern = Pattern(target_points_coefficient=0.91,
                       style=Style.THEORY_FIRST,
                       generator=generator)
     simulator = PatternSimulator(pattern)
