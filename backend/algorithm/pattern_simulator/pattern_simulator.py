@@ -16,7 +16,7 @@ from algorithm.views import enroll_semester
 from answers.models import MultipleChoiceRadio, FillInSingleBlank
 from answers.views import validate_answer
 from config.settings import Constants
-from courses.models import Semester, SemesterCode, Problem, Type, Topic
+from courses.models import Semester, SemesterCode, Problem, Type, Topic, Module
 
 random.seed(42)
 
@@ -67,8 +67,8 @@ class PatternSimulator:
 
     def run(self):
         match self.pattern.style:
-            case Style.TOPIC_BASED:
-                self.topic_based_simulation()
+            case Style.MODULE_BASED:
+                self.module_based_simulation()
             case Style.THEORY_FIRST:
                 self.theory_first_simulation()
             case _:
@@ -76,15 +76,21 @@ class PatternSimulator:
         self.export_simulation_results()
         self.tear_down()
 
-    def topic_based_simulation(self):
-        """Прохождение теории и практики чередуется: сначала закрывается теория
-        по теме, затем практика по ней.
+    def module_based_simulation(self):
+        """Прохождение курса по модулям: сначала закрывается теория
+        по всем темам модуля, затем практика по нему.
         """
-        raise NotImplementedError()
+        modules = self.semester.course.module_set.all().order_by('created_at')
+        for module in modules:
+            for topic in module.topic_set.all().order_by('created_at'):
+                self.complete_topic_theory_to_low_points(topic)
+            for topic in module.topic_set.all().order_by('created_at'):
+                self.complete_topic_theory_to_target_points(topic)
+            self.complete_module_practice_to_target_points(module)
 
     def theory_first_simulation(self):
         """Сначала проходится теория по всем темам, затем практика."""
-        topics = self.semester.course.module_set.first().topic_set.all().order_by('created_at')
+        topics = Topic.objects.filter(module__course__semester=self.semester).order_by('created_at')
         for topic in topics:
             self.complete_topic_theory_to_low_points(topic)
         for topic in topics:
@@ -98,6 +104,22 @@ class PatternSimulator:
             problem = next_theory_problem(progress)
             self.solve_problem(problem, is_solved=self.pattern.is_next_problem_solved())
             progress.refresh_from_db()
+
+    def complete_module_practice_to_target_points(self, module: Module):
+        """Завершает практику по модулю на требуемый балл."""
+        while not self.is_all_module_topics_practice_completed(module):
+            problem = next_practice_problem(self.user, self.semester)
+            self.solve_problem(problem, is_solved=self.pattern.is_next_problem_solved())
+
+    def is_all_module_topics_practice_completed(self, module: Module) -> bool:
+        """Проверяет, набран ли требуемый балл по всем темам модуля."""
+        max_points = Constants.TOPIC_THEORY_MAX_POINTS + Constants.TOPIC_PRACTICE_MAX_POINTS
+        target_points = max_points * self.pattern.target_points_coefficient
+        points = []
+        for topic in module.topic_set.all():
+            progress = Progress.objects.get(user=self.user, semester=self.semester, topic=topic)
+            points.append(progress.points >= target_points)
+        return all(points)
 
     def complete_topic_theory_to_target_points(self, topic: Topic):
         """Завершает теорию по теме на требуемый балл."""
