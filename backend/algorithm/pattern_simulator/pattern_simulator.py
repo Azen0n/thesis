@@ -1,4 +1,6 @@
 import json
+import os
+import pathlib
 import random
 from dataclasses import dataclass
 
@@ -174,7 +176,13 @@ class PatternSimulator:
 
     def export_simulation_results(self):
         """Записывает результат симуляции в тестовый файл."""
-        filepath = f'output{random.randint(int(1e5), int(1e6))}.txt'
+        output_dir = os.path.join(pathlib.Path(__file__).parent.resolve(), 'output')
+        if not os.path.exists(output_dir):
+            os.mkdir(output_dir)
+        pattern_name = (f'{self.pattern.target_points_coefficient}'
+                        f'_{self.pattern.generator.__name__}'
+                        f'_{self.pattern.style}.txt')
+        filepath = f'{os.path.join(output_dir, pattern_name)}'
         write_student_stats_to_file(filepath, self.user, self.semester)
 
 

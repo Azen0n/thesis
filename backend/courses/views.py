@@ -1,7 +1,5 @@
-import random
 from datetime import datetime
 import json
-from typing import Generator
 from uuid import UUID
 
 from django.contrib.auth.models import User
@@ -12,7 +10,10 @@ from django.views import View
 from django.views.generic import ListView
 
 from algorithm.models import UserAnswer, Progress
-from algorithm.pattern_simulator.patterns import Pattern, Style
+from algorithm.pattern_simulator.patterns import (
+    Pattern, Style, motivation_decay_generator, motivation_spikes_generator,
+    falling_behind_generator, excessive_perfectionism_generator
+)
 from algorithm.pattern_simulator.pattern_simulator import PatternSimulator
 from .models import Semester, Topic, Problem, PRACTICE_TYPES, SemesterCode
 from answers.utils import get_answer_safe_data, get_correct_answers
@@ -159,28 +160,25 @@ def generate_semester_code(request: HttpRequest, semester_pk: UUID) -> HttpRespo
     return JsonResponse(json.dumps({'code': code.code, 'is_code_expired': is_code_expired}), safe=False)
 
 
-random.seed(42)
-
-
 def debug_pattern_simulator(request: HttpRequest):
-
-    def generator() -> Generator[bool, None, None]:
-        number_of_problems_solved = 0
-        while True:
-            if number_of_problems_solved < 15:
-                chance = 0.99
-            elif number_of_problems_solved < 30:
-                chance = 0.89
-            elif number_of_problems_solved < 45:
-                chance = 0.79
-            else:
-                chance = 0.69
-            yield random.uniform(0, 1) < chance
-            number_of_problems_solved += 1
-
-    pattern = Pattern(target_points_coefficient=0.91,
-                      style=Style.THEORY_FIRST,
-                      generator=generator)
-    simulator = PatternSimulator(pattern)
-    simulator.run()
+    """Симуляция прохождения курса студентами н основе четырех паттернов:
+    1. «Снижение мотивации со временем»
+    2. «Периодические всплески мотивации»
+    3. «Отставание»
+    4. «Излишний перфекционизм»
+    """
+    target_points_coefficients = [0.91]
+    pattern_generators = [
+        motivation_decay_generator,
+        motivation_spikes_generator,
+        falling_behind_generator,
+        excessive_perfectionism_generator
+    ]
+    for target_points_coefficient in target_points_coefficients:
+        for generator in pattern_generators:
+            pattern = Pattern(target_points_coefficient=target_points_coefficient,
+                              style=Style.THEORY_FIRST,
+                              generator=generator)
+            simulator = PatternSimulator(pattern)
+            simulator.run()
     return JsonResponse(json.dumps({'status': '200'}), safe=False)
