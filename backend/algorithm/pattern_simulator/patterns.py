@@ -5,6 +5,8 @@ from typing import Callable, Generator
 
 import math
 
+from algorithm.models import TargetPoints
+
 
 class Style(Enum):
     MODULE_BASED = 1
@@ -14,14 +16,14 @@ class Style(Enum):
 @dataclass
 class Pattern:
     """Паттерн прохождения курса студентом.
-    target_points_coefficient - доля баллов от 0 до 1, к которому стремится студент.
+    target_points - количество баллов, к которым стремится студент.
     style - стиль прохождения курса:
         - MODULE_BASED - Прохождение курса по модулям: сначала закрывается теория
         по всем темам модуля, затем практика по нему.
         - THEORY_FIRST - Сначала проходится теория по всем темам, затем практика.
     generator - генератор, возвращающий ответ на задание по формуле.
     """
-    target_points_coefficient: float
+    target_points: TargetPoints
     style: Style
     generator: Callable[[], Generator[bool, None, None]]
 

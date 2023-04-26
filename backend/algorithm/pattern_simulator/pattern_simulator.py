@@ -10,7 +10,7 @@ from django.db.models import F
 from django.test import RequestFactory
 from django.urls import reverse
 
-from algorithm.models import Progress
+from algorithm.models import Progress, UserTargetPoints
 from algorithm.pattern_simulator.patterns import Pattern, Style
 from algorithm.pattern_simulator.student_stats_writer import write_student_stats_to_file
 from algorithm.problem_selector import next_theory_problem, next_practice_problem
@@ -19,8 +19,6 @@ from answers.models import MultipleChoiceRadio, FillInSingleBlank
 from answers.views import validate_answer
 from config.settings import Constants
 from courses.models import Semester, SemesterCode, Problem, Type, Topic, Module
-
-random.seed(42)
 
 
 @dataclass
@@ -40,6 +38,9 @@ class PatternSimulator:
         Если название не указано, пользователь записывается на курс "Test Course".
         """
         self.user = self.create_user(username)
+        user_target_points = UserTargetPoints.objects.get_or_create(user=self.user)[0]
+        user_target_points.target_points = self.pattern.target_points
+        user_target_points.save()
         semester_title = 'Test Course' if semester_title is None else semester_title
         self.semester = Semester.objects.get(course__title=semester_title)
         url = reverse('enroll', args=[self.semester.pk])
@@ -115,18 +116,16 @@ class PatternSimulator:
 
     def is_all_module_topics_practice_completed(self, module: Module) -> bool:
         """Проверяет, набран ли требуемый балл по всем темам модуля."""
-        max_points = Constants.TOPIC_THEORY_MAX_POINTS + Constants.TOPIC_PRACTICE_MAX_POINTS
-        target_points = max_points * self.pattern.target_points_coefficient
         points = []
         for topic in module.topic_set.all():
             progress = Progress.objects.get(user=self.user, semester=self.semester, topic=topic)
-            points.append(progress.points >= target_points)
+            points.append(progress.points >= self.pattern.target_points.value)
         return all(points)
 
     def complete_topic_theory_to_target_points(self, topic: Topic):
         """Завершает теорию по теме на требуемый балл."""
         progress = Progress.objects.get(user=self.user, semester=self.semester, topic=topic)
-        target_points = Constants.TOPIC_THEORY_MAX_POINTS * self.pattern.target_points_coefficient
+        target_points = Constants.TOPIC_THEORY_MAX_POINTS * self.pattern.target_points.value / 100
         while progress.theory_points < target_points:
             problem = next_theory_problem(progress)
             self.solve_problem(problem, is_solved=self.pattern.is_next_problem_solved())
@@ -155,13 +154,11 @@ class PatternSimulator:
 
     def is_all_topics_completed(self) -> bool:
         """Возвращает True, если по всем темах набран необходимый балл."""
-        practice_points = self.get_all_topic_points()
-        max_points = Constants.TOPIC_THEORY_MAX_POINTS + Constants.TOPIC_PRACTICE_MAX_POINTS
-        target_points = max_points * self.pattern.target_points_coefficient
-        return not any([points < target_points for points in practice_points])
+        total_points = self.get_all_topic_points()
+        return not any([points < self.pattern.target_points.value for points in total_points])
 
     def get_all_topic_points(self) -> list[float]:
-        """Возвращает список баллов по практике."""
+        """Возвращает список баллов по всем темам."""
         progresses = Progress.objects.filter(user=self.user, semester=self.semester)
         total_points = progresses.annotate(
             total_points=F('theory_points') + F('practice_points')
@@ -179,9 +176,10 @@ class PatternSimulator:
         output_dir = os.path.join(pathlib.Path(__file__).parent.resolve(), 'output')
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
-        pattern_name = (f'{self.pattern.target_points_coefficient}'
+        pattern_name = (f'{self.pattern.target_points.value}'
                         f'_{self.pattern.generator.__name__}'
-                        f'_{self.pattern.style}.txt')
+                        f'_{self.pattern.style}'
+                        f'_{format(random.getrandbits(32), "x")}.txt')
         filepath = f'{os.path.join(output_dir, pattern_name)}'
         write_student_stats_to_file(filepath, self.user, self.semester)
 

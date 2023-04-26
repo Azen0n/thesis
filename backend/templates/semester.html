@@ -34,6 +34,20 @@
             {% if user.is_authenticated %}
                 {% if is_student %}
                     Вы записаны на курс
+                    <br>
+                    <form action="" id="target_points_form">
+                        {% csrf_token %}
+                        <label for="target_points">Выберите желаемую оценку:</label>
+                        <select id="target_points">
+                            {% for points, mark in target_points_options %}
+                                <option value="{{ points }}"
+                                        {% if user.usertargetpoints.target_points == points %}selected{% endif %}>
+                                    {{ mark }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit">Изменить</button>
+                    </form>
                 {% else %}
                     <form action="{% url 'enroll' semester.id %}" method="POST" id="join_code_form">
                         {% csrf_token %}

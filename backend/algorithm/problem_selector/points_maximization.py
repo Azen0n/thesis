@@ -87,10 +87,10 @@ def sub_topic_points_if_problem_solved_correctly(progress: Progress,
     """Возвращает количество баллов, которое получит пользователь по подтеме,
     если решит теоретическое или практическое задание правильно.
     """
-    if progress.points >= Constants.TOPIC_THRESHOLD_MEDIUM:
+    if progress.points >= Constants.SUB_TOPIC_POINTS_THRESHOLD:
         return 0
-    elif progress.points + points >= Constants.TOPIC_THRESHOLD_MEDIUM:
-        points = Constants.TOPIC_THRESHOLD_MEDIUM - progress.points
+    elif progress.points + points >= Constants.SUB_TOPIC_POINTS_THRESHOLD:
+        points = Constants.SUB_TOPIC_POINTS_THRESHOLD - progress.points
     return points_if_problem_solved_correctly(progress, points, problem)
 
 

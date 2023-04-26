@@ -52,7 +52,7 @@ def filter_practice_problems(user: User, semester: Semester,
     ).annotate(
         points=F('theory_points') + F('practice_points')
     ).filter(
-        points__lt=Constants.TOPIC_THRESHOLD_HIGH
+        points__lt=user.usertargetpoints.target_points
     ).values_list('topic__id', flat=True)
     problems = filter_problems(user, semester).filter(
         type__in=PRACTICE_TYPES,
