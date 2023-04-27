@@ -43,10 +43,10 @@ def add_points_to_main_topic(progress: Progress, problem: Problem, points: float
 
 def add_points_to_sub_topic(progress: Progress, problem: Problem, points: float):
     """Добавляет баллы в подтему задания не превышая установленного порога."""
-    if progress.points >= Constants.TOPIC_THRESHOLD_MEDIUM:
+    if progress.points >= Constants.SUB_TOPIC_POINTS_THRESHOLD:
         return
-    elif progress.points + points >= Constants.TOPIC_THRESHOLD_MEDIUM:
-        points = Constants.TOPIC_THRESHOLD_MEDIUM - progress.points
+    elif progress.points + points >= Constants.SUB_TOPIC_POINTS_THRESHOLD:
+        points = Constants.SUB_TOPIC_POINTS_THRESHOLD - progress.points
         add_points_to_topic(progress, problem, points)
     else:
         add_points_to_topic(progress, problem, points)

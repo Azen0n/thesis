@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', main, false);
 function main() {
     addGenerateCodeFormListener();
     addJoinCodeFormListener();
+    addChangeTargetPointsListener();
 }
 
 function addJoinCodeFormListener() {
@@ -71,6 +72,26 @@ async function enroll() {
             'X-CSRFToken': csrf
         },
         body: JSON.stringify({'code': document.getElementById('join_code').value})
+    });
+    return response.json();
+}
+
+function addChangeTargetPointsListener() {
+    document.getElementById('target_points_form').addEventListener('submit', function (e) {
+        changeTargetPoints().then(response => {});
+        e.preventDefault();
+    });
+}
+
+async function changeTargetPoints() {
+    const csrf = document.getElementsByName('csrfmiddlewaretoken')[0].value;
+    let response = await fetch('/change_target_points/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf
+        },
+        body: JSON.stringify({'points': document.getElementById('target_points').value})
     });
     return response.json();
 }

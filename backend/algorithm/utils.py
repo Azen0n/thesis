@@ -1,11 +1,13 @@
 from django.contrib.auth.models import User
 
-from algorithm.models import Progress, UserWeakestLinkState, WeakestLinkState
+from algorithm.models import (Progress, UserWeakestLinkState,
+                              WeakestLinkState, UserTargetPoints)
 from courses.models import Semester
 
 
 def create_user_progress_if_not_exists(semester: Semester, user: User):
     """Создает прогресс каждой темы курса семестра."""
+    UserTargetPoints.objects.get_or_create(user=user)
     for module in semester.course.module_set.all():
         for topic in module.topic_set.all():
             progress = Progress.objects.filter(user=user,

@@ -26,7 +26,8 @@ def generate_test_data():
         semester = create_test_semester()
         teacher = create_teacher(semester)
         create_join_code(semester, teacher)
-        create_test_topics(semester.course, number_of_topics=10)
+        create_test_modules_and_topics(semester.course,
+                                       number_of_topics_in_modules=[1, 4, 3, 3, 4, 4])
         create_problems(semester.course)
         create_random_answers(semester.course)
         create_random_topic_graph(Topic.objects.filter(module__course=semester.course))
@@ -69,32 +70,36 @@ def create_superuser() -> User:
 
 def create_teacher(semester: Semester) -> User:
     """Создает и возвращает пользователя teacher, назначая его преподавателем курса."""
-    teacher = User.objects.create_user(username='teacher',
-                                       email='teacher@mail.com',
-                                       password='teacher')
-    semester.teachers.add(teacher)
+    teacher, _ = User.objects.get_or_create(username='teacher',
+                                         email='teacher@mail.com',
+                                         password='teacher')
+    if teacher not in semester.teachers.all():
+        semester.teachers.add(teacher)
     return teacher
 
 
-def create_test_topics(course: Course, number_of_topics: int = 10):
-    """Создает темы для курса."""
-    module = Module.objects.create(
-        title='Test Module',
-        description='Lorem Ipsum',
-        is_required=True,
-        course=course
-    )
+def create_test_modules_and_topics(course: Course, number_of_topics_in_modules: list[int]):
+    """Создает модули и темы для курса."""
+    topic_index = 1
     parent_topic = None
-    for i in range(number_of_topics):
-        topic = Topic.objects.create(
-            title=f'Topic {i + 1}',
-            time_to_complete=5,
-            is_required=False,
-            module=module,
-            parent_topic=parent_topic
+    for i, number_of_topics in enumerate(number_of_topics_in_modules):
+        module = Module.objects.create(
+            title=f'Module {i + 1}',
+            description='Lorem Ipsum',
+            is_required=True,
+            course=course
         )
-        module.topic_set.add(topic)
-        parent_topic = topic
+        for _ in range(number_of_topics):
+            topic = Topic.objects.create(
+                title=f'Topic {topic_index}',
+                time_to_complete=5,
+                is_required=False,
+                module=module,
+                parent_topic=parent_topic
+            )
+            module.topic_set.add(topic)
+            parent_topic = topic
+            topic_index += 1
 
 
 def create_problems(course: Course,
@@ -104,16 +109,17 @@ def create_problems(course: Course,
     theory_problem_counter = 1
     practice_problem_counter = 1
     available_sub_topics = []
-    for topic in course.module_set.filter(title='Test Module').first().topic_set.all():
-        for i in range(number_of_theory_problems):
-            create_problem(f'Theory Problem {theory_problem_counter}', topic,
-                           available_sub_topics, THEORY_TYPES)
-            theory_problem_counter += 1
-        for i in range(number_of_practice_problems):
-            create_problem(f'Practice Problem {practice_problem_counter}', topic,
-                           available_sub_topics, PRACTICE_TYPES)
-            practice_problem_counter += 1
-        available_sub_topics.append(topic)
+    for module in course.module_set.all().order_by('created_at'):
+        for topic in module.topic_set.all().order_by('created_at'):
+            for i in range(number_of_theory_problems):
+                create_problem(f'Theory Problem {theory_problem_counter}', topic,
+                               available_sub_topics, [Type.MULTIPLE_CHOICE_RADIO])
+                theory_problem_counter += 1
+            for i in range(number_of_practice_problems):
+                create_problem(f'Practice Problem {practice_problem_counter}', topic,
+                               available_sub_topics, [Type.FILL_IN_SINGLE_BLANK])
+                practice_problem_counter += 1
+            available_sub_topics.append(topic)
 
 
 def create_problem(problem_title: str, topic: Topic,
@@ -141,10 +147,10 @@ def create_problem(problem_title: str, topic: Topic,
 def generate_time_to_solve_in_seconds(types: list[Type], difficulty: Difficulty,
                                       number_of_sub_topics: int) -> float:
     """Возвращает количество секунд на решение задания."""
-    if types == THEORY_TYPES:
+    if set(types).issubset(set(THEORY_TYPES)):
         time_to_solve_in_seconds = random.randint(1, 5) + (
                 100 * difficulty.value - 100) + 10 * (1 + number_of_sub_topics)
-    elif types == PRACTICE_TYPES:
+    elif set(types).issubset(set(PRACTICE_TYPES)):
         time_to_solve_in_seconds = random.randint(1, 5) * 5 + (
                 500 * difficulty.value - 200) + 10 * (1 + number_of_sub_topics)
     else:
@@ -257,6 +263,7 @@ def reset_semesters_without_disenroll():
 def delete_everything():
     """Удаляет все объекты, связанные с курсами."""
     Course.objects.all().delete()
+    User.objects.all().delete()
 
 
 def disenroll_student(username: str, course_title: str):

@@ -9,7 +9,12 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import ListView
 
-from algorithm.models import UserAnswer, Progress
+from algorithm.models import UserAnswer, Progress, TargetPoints, UserTargetPoints
+from algorithm.pattern_simulator.patterns import (
+    Pattern, Style, motivation_decay_generator, motivation_spikes_generator,
+    falling_behind_generator, excessive_perfectionism_generator
+)
+from algorithm.pattern_simulator.pattern_simulator import PatternSimulator
 from .models import Semester, Topic, Problem, PRACTICE_TYPES, SemesterCode
 from answers.utils import get_answer_safe_data, get_correct_answers
 from .utils import is_problem_topic_completed, generate_join_code
@@ -37,6 +42,7 @@ class SemesterView(View):
         context = {
             'is_teacher': semester in request.user.semester_teacher_set.all(),
             'is_student': semester in request.user.semester_student_set.all(),
+            'target_points_options': TargetPoints.choices,
             'code': code,
             'is_code_expired': is_code_expired,
             'min_expiration_time': timezone.now().strftime('%Y-%m-%dT%H:%M'),
@@ -153,3 +159,41 @@ def generate_semester_code(request: HttpRequest, semester_pk: UUID) -> HttpRespo
     )
     is_code_expired = code.expired_at < timezone.now()
     return JsonResponse(json.dumps({'code': code.code, 'is_code_expired': is_code_expired}), safe=False)
+
+
+def change_target_points(request: HttpRequest) -> JsonResponse:
+    """Изменяет баллы, к которым стремится алгоритм подбора заданий."""
+    user_target_points = UserTargetPoints.objects.get_or_create(user=request.user)[0]
+    points = json.loads(request.body).get('points', '')
+    if points.isnumeric():
+        points = int(points)
+    try:
+        user_target_points.target_points = TargetPoints(points)
+        user_target_points.save()
+        return JsonResponse(json.dumps({'status': '200'}), safe=False)
+    except ValueError:
+        return JsonResponse(json.dumps({'status': '422'}), safe=False)
+
+
+def debug_pattern_simulator(request: HttpRequest):
+    """Симуляция прохождения курса студентами н основе четырех паттернов:
+    1. «Снижение мотивации со временем»
+    2. «Периодические всплески мотивации»
+    3. «Отставание»
+    4. «Излишний перфекционизм»
+    """
+    target_points_list: list[TargetPoints] = [TargetPoints.LOW, TargetPoints.MEDIUM, TargetPoints.HIGH]
+    pattern_generators = [
+        motivation_decay_generator,
+        motivation_spikes_generator,
+        falling_behind_generator,
+        excessive_perfectionism_generator
+    ]
+    for target_points in target_points_list:
+        for generator in pattern_generators:
+            pattern = Pattern(target_points=target_points,
+                              style=Style.THEORY_FIRST,
+                              generator=generator)
+            simulator = PatternSimulator(pattern)
+            simulator.run()
+    return JsonResponse(json.dumps({'status': '200'}), safe=False)

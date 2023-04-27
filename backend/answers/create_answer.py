@@ -44,14 +44,12 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
     ).first()
     if problem.type in THEORY_TYPES:
         last_answers = get_last_theory_user_answers(user, problem.main_topic)
-        if len(last_answers) < Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
+        if len(last_answers) <= Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
             if is_solved:
                 add_placement_points_for_problem(progress, user_answer)
-            return
-        if len(last_answers) == Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
-            if is_solved:
-                add_placement_points_for_problem(progress, user_answer)
-            placement_change_skill_level(progress, last_answers)
+            if len(last_answers) == Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
+                progress.refresh_from_db()
+                placement_change_skill_level(progress, last_answers)
             return
     change_user_skill_level(progress, user_answer)
     if is_solved:

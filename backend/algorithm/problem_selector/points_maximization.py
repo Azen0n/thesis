@@ -3,7 +3,6 @@ from django.contrib.auth.models import User
 from django.db.models import QuerySet
 
 from algorithm.models import Progress
-from answers.points_management import DIFFICULTY_TO_POINTS_THRESHOLD
 from config.settings import Constants
 from courses.models import Semester, Problem, Difficulty, Type, THEORY_TYPES
 
@@ -11,6 +10,12 @@ POINTS_BY_DIFFICULTY = {
     Difficulty.EASY.value: Constants.POINTS_EASY,
     Difficulty.NORMAL.value: Constants.POINTS_NORMAL,
     Difficulty.HARD.value: Constants.POINTS_HARD,
+}
+
+DIFFICULTY_TO_POINTS_THRESHOLD = {
+    Difficulty.EASY.value: Constants.TOPIC_THRESHOLD_LOW,
+    Difficulty.NORMAL.value: Constants.TOPIC_THRESHOLD_MEDIUM,
+    Difficulty.HARD.value: Constants.TOPIC_THRESHOLD_HIGH,
 }
 
 
@@ -32,7 +37,16 @@ def calculate_problem_value(user: User, semester: Semester, problem: Problem) ->
     skill_level_coefficient = Constants.AVERAGE_SKILL_LEVEL / progress.skill_level
     weighted_time_to_solve = problem.time_to_solve_in_seconds * skill_level_coefficient
     points = calculate_points_if_problem_solved_correctly(progress, problem)
-    return math.inf if points == 0 else weighted_time_to_solve / points
+    return math.inf if points == 0 else weighted_time_to_solve / (points * threshold_coefficient(progress))
+
+
+def threshold_coefficient(progress: Progress) -> float:
+    """Возвращает коэффициент ценности темы в зависимости от количества баллов."""
+    if progress.points < Constants.TOPIC_THRESHOLD_LOW:
+        return Constants.TOPIC_THRESHOLD_LOW_COEFFICIENT
+    if progress.points < Constants.TOPIC_THRESHOLD_MEDIUM:
+        return Constants.TOPIC_THRESHOLD_MEDIUM_COEFFICIENT
+    return Constants.TOPIC_THRESHOLD_HIGH_COEFFICIENT
 
 
 def calculate_points_if_problem_solved_correctly(progress: Progress, problem: Problem) -> float:
@@ -73,10 +87,10 @@ def sub_topic_points_if_problem_solved_correctly(progress: Progress,
     """Возвращает количество баллов, которое получит пользователь по подтеме,
     если решит теоретическое или практическое задание правильно.
     """
-    if progress.points >= Constants.TOPIC_THRESHOLD_MEDIUM:
+    if progress.points >= Constants.SUB_TOPIC_POINTS_THRESHOLD:
         return 0
-    elif progress.points + points >= Constants.TOPIC_THRESHOLD_MEDIUM:
-        points = Constants.TOPIC_THRESHOLD_MEDIUM - progress.points
+    elif progress.points + points >= Constants.SUB_TOPIC_POINTS_THRESHOLD:
+        points = Constants.SUB_TOPIC_POINTS_THRESHOLD - progress.points
     return points_if_problem_solved_correctly(progress, points, problem)
 
 

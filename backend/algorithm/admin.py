@@ -7,6 +7,7 @@ algorithm = [algorithm_models.Progress,
              algorithm_models.WeakestLinkTopic,
              algorithm_models.WeakestLinkProblem,
              algorithm_models.UserWeakestLinkState,
-             algorithm_models.TopicGraphEdge]
+             algorithm_models.TopicGraphEdge,
+             algorithm_models.UserTargetPoints]
 
 admin.site.register(algorithm)

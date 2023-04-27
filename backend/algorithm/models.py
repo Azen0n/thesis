@@ -18,6 +18,25 @@ class AbstractUserSemester(models.Model):
         abstract = True
 
 
+class TargetPoints(models.IntegerChoices):
+    """Баллы, которые студенту необходимо набрать по каждой теме
+    и соответсвующая им оценка. При достижении порога по теме ценность
+    дальнейших заданий по ней будет равна нулю.
+    """
+    LOW = 61, _('3')
+    MEDIUM = 76, _('4')
+    HIGH = 91, _('5')
+
+
+class UserTargetPoints(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
+    target_points = models.IntegerField(choices=TargetPoints.choices,
+                                        default=TargetPoints.HIGH)
+
+    def __str__(self):
+        return f'{self.user.username} - {self.get_target_points_display()}'
+
+
 class Progress(AbstractUserSemester):
     topic = models.ForeignKey(Topic, on_delete=models.CASCADE)
     theory_points = models.FloatField(default=0.0)
