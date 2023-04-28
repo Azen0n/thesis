@@ -2,7 +2,7 @@ from django.urls import path
 
 from courses.views import (SemesterListView, SemesterView,
                            TopicView, ProblemView, generate_semester_code,
-                           debug_pattern_simulator, change_target_points)
+                           debug_pattern_simulator, change_target_points, temp_view)
 
 urlpatterns = [
     path('semesters/', SemesterListView.as_view(), name='semesters'),
@@ -12,4 +12,5 @@ urlpatterns = [
     path('semesters/<uuid:semester_pk>/generate_semester_code/', generate_semester_code, name='generate_semester_code'),
     path('debug/', debug_pattern_simulator, name='debug_pattern_simulator'),
     path('change_target_points/', change_target_points, name='change_target_points'),
+    path('temp_view/<uuid:pk>/', temp_view, name='temp_view'),
 ]

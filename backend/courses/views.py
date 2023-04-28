@@ -3,21 +3,21 @@ import json
 from uuid import UUID
 
 from django.contrib.auth.models import User
+from django.db.models import F, QuerySet
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 from django.views import View
 from django.views.generic import ListView
 
-from algorithm.models import UserAnswer, Progress, TargetPoints, UserTargetPoints
-from algorithm.pattern_simulator.patterns import (
-    Pattern, Style, motivation_decay_generator, motivation_spikes_generator,
-    falling_behind_generator, excessive_perfectionism_generator
-)
+from algorithm.models import TargetPoints, UserTargetPoints, Progress, UserAnswer
 from algorithm.pattern_simulator.pattern_simulator import PatternSimulator
-from .models import Semester, Topic, Problem, PRACTICE_TYPES, SemesterCode
+from algorithm.pattern_simulator.patterns import motivation_decay_generator, falling_behind_generator, \
+    excessive_perfectionism_generator, motivation_spikes_generator, Pattern, Style
 from answers.utils import get_answer_safe_data, get_correct_answers
-from .utils import is_problem_topic_completed, generate_join_code
+from .models import Semester, Module, SemesterCode, Problem, PRACTICE_TYPES, Topic
+from .utils import is_problem_topic_completed, generate_join_code, get_annotated_semester_topics, \
+    get_semester_code_context
 
 
 class SemesterListView(ListView):
@@ -62,6 +62,24 @@ class SemesterView(View):
             } for module in semester.course.module_set.all()]
         }
         return render(request, 'semester.html', context)
+
+
+def temp_view(request: HttpRequest, pk: UUID) -> HttpResponse:
+    """Временное представление курса (семестра)."""
+    if not request.user.is_authenticated:
+        return render(request, 'error.html', {'message': 'Войдите в систему, чтобы просматривать курсы.'},
+                      status=401)
+    semester = Semester.objects.get(pk=pk)
+    topics = get_annotated_semester_topics(request.user, semester)
+    context = {
+        'semester': semester,
+        'topics': topics,
+        'target_points_options': TargetPoints.choices,
+        'is_semester_teacher': request.user in semester.teachers.all(),
+        'is_enrolled': request.user in semester.students.all(),
+    }
+    context.update(get_semester_code_context(semester))
+    return render(request, 'temp_template.html', context)
 
 
 class TopicView(View):

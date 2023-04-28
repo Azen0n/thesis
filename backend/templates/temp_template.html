@@ -1,0 +1,27 @@
+<p>{{ user.username }}</p>
+<p>{{ semester.course.title }}</p>
+<p>is_semester_teacher = {{ is_semester_teacher }}</p>
+<p>is_enrolled = {{ is_enrolled }}</p>
+
+<p>code = {{ code }}</p>
+<p>is_code_expired = {{ is_code_expired }}</p>
+<p>min_expiration_time = {{ min_expiration_time }}</p>
+<p>max_expiration_time = {{ max_expiration_time }}</p>
+<p>default_expiration_time = {{ default_expiration_time }}</p>
+
+{% regroup topics by module as modules %}
+
+<ul>
+    {% for module in modules %}
+        <li>{{ module.grouper.title }} ({{ module.grouper.description }}, тем: {{ module.grouper.topic_set.count }})
+            <ul>
+            {% for topic in module.list %}
+                <li>
+                    {{ topic.title }} ({{ topic.time_to_complete }} ч)
+                    {{ topic.points }} / {{ topic.theory_points }} / {{ topic.practice_points }}
+                </li>
+            {% endfor %}
+            </ul>
+        </li>
+    {% endfor %}
+</ul>
