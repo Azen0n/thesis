@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', main, false);
+let instance;
 
 function main() {
     let answerElement = document.getElementById('answer');
@@ -7,31 +8,20 @@ function main() {
 
     document.getElementById('answer_form').addEventListener('submit', function (e) {
         validateAnswer(answerElement).then((data) => {
-            let result = JSON.parse(data);
-            console.log(result);
-            let coefficient = result['coefficient'];
-            if (coefficient === undefined) {
-                coefficient = result['error'];
-            } else {
-                let submitButton = document.getElementById('submit_button');
-                submitButton.remove();
-            }
-            resultElement.innerHTML = `${coefficient}`;
+            processAnswerResultData(data);
         });
         e.preventDefault();
     });
     document.getElementById('run_stdin_button').addEventListener('click', function () {
+        resultElement.innerHTML = `Запрос обрабатывается...`;
         runStdin(answerElement).then((data) => {
-            let result = JSON.parse(data);
-            console.log(result);
-            resultElement.innerHTML = `${result}`;
+            processRunStdinResultData(data);
         });
     });
     document.getElementById('run_tests_button').addEventListener('click', function () {
-        runTests(answerElement).then((data) => {
-            let result = JSON.parse(data);
-            console.log(result);
-            resultElement.innerHTML = `${result}`;
+        resultElement.innerHTML = `Запрос обрабатывается...`;
+        validateAnswer(answerElement).then((data) => {
+            processAnswerResultData(data);
         });
     });
 }
@@ -125,9 +115,29 @@ function fillInSingleBlank(answerElement, correctAnswers) {
 function code(answerElement, correctAnswers) {
     if (correctAnswers == null) {
         answerElement.innerHTML = `
-        <p>Код на Python (stdin -> stdout)</p>
-        <textarea id="code" rows="15" cols="40"></textarea>
-    `;
+        <p>Код на Python (stdin → stdout)</p>
+        <div id="code" style="position: relative; border: 2px solid #ccc; width: 700px;"></div>
+        `;
+        let codeElement = document.getElementById('code');
+        instance = CodeMirror(codeElement, {
+            lineNumbers: true,
+            mode: "python",
+            indentUnit: 4,
+            textHeight: 18,
+        });
+        instance.setSize(700, 300);
+    } else {
+        let tests = correctAnswers['is_correct'].split('\n');
+        let stdinStdout = [];
+        for (let i = 1; i < tests.length; i += 2) {
+            let stdin = tests[i - 1].split(',\r').filter(n => n);
+            stdinStdout.push(`${stdin} → ${tests[i]}`);
+        }
+        answerElement.innerHTML = `
+        <p>Код на Python (stdin → stdout)</p>
+        <p>Тесты:</p>
+        ${stdinStdout.join('<br>')}
+        `;
     }
 }
 
@@ -187,8 +197,7 @@ function getFillInSingleBlankAnswer(answerElement) {
 }
 
 function getCodeAnswer(answerElement) {
-    let input = answerElement.querySelectorAll('textarea')[0];
-    return {'code': input.value, 'problem_id': answerElement.parentElement.parentElement.dataset.problem};
+    return {'code': instance.getValue(), 'problem_id': answerElement.parentElement.parentElement.dataset.problem};
 }
 
 async function validateAnswer(answerElement) {
@@ -223,17 +232,65 @@ async function runStdin(answerElement) {
     return response.json();
 }
 
-async function runTests(answerElement) {
-    const problemElement = answerElement.parentElement.parentElement;
-    const url = `/semesters/${problemElement.dataset.semester}/problems/${problemElement.dataset.problem}/run_tests/`;
-    const csrf = document.getElementsByName('csrfmiddlewaretoken')[0].value;
-    let response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrf
-        },
-        body: JSON.stringify(getAnswerData())
+function processAnswerResultData(data) {
+    let result = JSON.parse(data);
+    console.log(result);
+    let coefficient = result['coefficient'];
+    if (coefficient === undefined) {
+        coefficient = result['error'];
+    } else {
+        let submitButton = document.getElementById('submit_button');
+        submitButton.remove();
+    }
+    let resultElement = document.getElementById('result');
+    resultElement.innerHTML = `${coefficient}`;
+}
+
+function processRunStdinResultData(data) {
+    let resultElement = document.getElementById('result');
+    let result = JSON.parse(data);
+    console.log(result);
+    if (result['code'] === undefined) {
+        if (result['error'] === undefined) {
+            resultElement.innerHTML = 'Произошла ошибка';
+        } else {
+            resultElement.innerHTML = `${result['error']}`;
+        }
+    } else {
+        let info = '<br>';
+        if (result['stderr'] === '') {
+            info += `Вывод:<br><pre>${encodeHtmlEntities(result['stdout'])}</pre>`;
+        } else {
+            info += `Ошибка:<br><pre>${encodeHtmlEntities(result['stderr'])}</pre>`;
+        }
+        resultElement.innerHTML = `${result['code']}${info}`;
+    }
+}
+
+function encodeHtmlEntities(str) {
+    const htmlEntities = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&apos;',
+        '/': '&sol;',
+        '`': '&grave;',
+        '(': '&#40;',
+        ')': '&#41;',
+        '+': '&#43;',
+        '-': '&#45;',
+        ';': '&#59;',
+        '=': '&#61;',
+        '[': '&#91;',
+        ']': '&#93;',
+        '^': '&#94;',
+        '{': '&#123;',
+        '|': '&#124;',
+        '}': '&#125;',
+        '~': '&#126;',
+    };
+    return str.replace(/[&<>"'/`()+\-;=\[\]^{|}~]/g, function (match) {
+        return htmlEntities[match] || match;
     });
-    return response.json();
 }

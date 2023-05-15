@@ -5,12 +5,16 @@ from uuid import UUID
 
 import requests
 from django.contrib.auth.models import User
-from django.http import JsonResponse, HttpRequest
+from django.http import JsonResponse
 
 from algorithm.models import Progress, UserAnswer
 from answers.models import MultipleChoiceRadio, MultipleChoiceCheckbox, FillInSingleBlank, Code
-from config.settings import Constants
+from config.settings import Constants, SANDBOX_API_URL, SANDBOX_API_HEADER, SANDBOX_API_TOKEN
 from courses.models import Problem, Type, Semester, THEORY_TYPES, PRACTICE_TYPES
+
+CorrectAnswerCoefficient: TypeAlias = int
+GivenAnswer: TypeAlias = MultipleChoiceRadio | list[MultipleChoiceCheckbox] | str | tuple[str, str]
+ValidatedAnswer: TypeAlias = tuple[CorrectAnswerCoefficient, GivenAnswer]
 
 
 def get_answer_safe_data(problem: Problem) -> dict:
@@ -45,11 +49,6 @@ def get_answer_safe_data(problem: Problem) -> dict:
         case _:
             answer = {}
     return answer
-
-
-CorrectAnswerCoefficient: TypeAlias = int
-GivenAnswer: TypeAlias = MultipleChoiceRadio | list[MultipleChoiceCheckbox] | str | tuple[str, str]
-ValidatedAnswer: TypeAlias = tuple[CorrectAnswerCoefficient, GivenAnswer]
 
 
 def validate_answer_by_type(data: dict) -> ValidatedAnswer:
@@ -119,7 +118,7 @@ def validate_fill_in_single_blank(problem_id: str, value: str) -> tuple[int, str
     return 0, value
 
 
-def validate_code(problem_id: str, code: str):
+def validate_code(problem_id: str, code: str) -> tuple[int, tuple[str, str]]:
     """Проверяет код пользователя на тестах.
     Возвращает коэффициент правильного ответа (0 или 1)
     и кортеж из отправленного кода и результата проверки.
@@ -130,9 +129,17 @@ def validate_code(problem_id: str, code: str):
         raise ValueError('Пустой ответ')
     problem = Problem.objects.get(id=problem_id)
     tests = Code.objects.get(problem=problem).tests
-    response = requests.post('http://localhost:8080/run_tests'
-                             f'?tests={quote(tests)}&code={quote(code)}')
-    result = response.json().get('result', None)
+    response = requests.post(
+        f'{SANDBOX_API_URL}/run_tests',
+        json={
+            'tests': quote(tests),
+            'code': quote(code),
+        },
+        headers={
+            SANDBOX_API_HEADER: SANDBOX_API_TOKEN,
+        }
+    )
+    result = response.json().get('code', None)
     if result is None:
         raise ValueError('Результат проверки кода не получен.')
     coefficient = int(is_code_solved(result))
@@ -143,7 +150,7 @@ def is_code_solved(code_test_result: str) -> bool:
     """Возвращает True, если код успешно прошел проверку на тестах или False,
     если один из тестов не пройден или возникла ошибка.
     """
-    if code_test_result == 'all good':
+    if code_test_result == 'OK':
         return True
     return False
 
@@ -162,7 +169,7 @@ def get_correct_answers(problem_id: UUID) -> dict:
             return {'is_correct': list(FillInSingleBlank.objects.filter(
                 problem=problem).values_list('text', flat=True))}
         case Type.CODE.value:
-            raise NotImplementedError('Проверки практических заданий нет.')
+            return {'is_correct': problem.code_set.first().tests}
         case other_type:
             raise ValueError(f'Неизвестный тип {other_type}.')
 

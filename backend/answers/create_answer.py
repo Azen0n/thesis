@@ -8,9 +8,10 @@ from algorithm.problem_selector.weakest_link import (check_weakest_link,
                                                      start_weakest_link_when_ready,
                                                      stop_weakest_link_when_practice_completed)
 from config.settings import Constants
-from .models import Answer, MultipleChoiceRadio, MultipleChoiceCheckbox
+from .models import Answer, CodeAnswer
 from courses.models import Problem, Semester, PRACTICE_TYPES, Type, THEORY_TYPES, Difficulty
 from .points_management import add_points_for_problem, add_placement_points_for_problem
+from .utils import GivenAnswer
 
 DIFFICULTY_COEFFICIENT = {
     Difficulty.EASY.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_EASY,
@@ -21,7 +22,7 @@ DIFFICULTY_COEFFICIENT = {
 
 @transaction.atomic
 def create_user_answer(user: User, semester: Semester, problem: Problem,
-                       coefficient: float, answer: MultipleChoiceRadio | list[MultipleChoiceCheckbox] | str):
+                       coefficient: float, answer: GivenAnswer):
     """Создает ответ пользователя на задание и добавляет баллы в его
     главную тему и подтемы.
     """
@@ -36,7 +37,7 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
         is_solved=is_solved,
         coefficient=coefficient
     )
-    create_entered_user_answers(problem.type, answer, user_answer)
+    create_given_user_answers(problem.type, answer, user_answer)
     progress = Progress.objects.filter(
         user=user,
         semester=semester,
@@ -62,9 +63,9 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
     stop_weakest_link_when_practice_completed(user, semester)
 
 
-def create_entered_user_answers(problem_type: str,
-                                answer: MultipleChoiceRadio | list[MultipleChoiceCheckbox] | str,
-                                user_answer: UserAnswer):
+def create_given_user_answers(problem_type: str,
+                              answer: GivenAnswer,
+                              user_answer: UserAnswer):
     """Создает список Answer с выбранными/введенными ответами пользователя."""
     match problem_type:
         case Type.MULTIPLE_CHOICE_RADIO.value:
@@ -75,7 +76,12 @@ def create_entered_user_answers(problem_type: str,
         case Type.FILL_IN_SINGLE_BLANK.value:
             Answer.objects.create(fill_in_single_blank=answer, user_answer=user_answer)
         case Type.CODE.value:
-            raise NotImplementedError('Проверки практических заданий нет.')
+            code_answer = CodeAnswer.objects.create(
+                code=user_answer.problem.code_set.first(),
+                user_code=answer[0],
+                tests_result=answer[1]
+            )
+            Answer.objects.create(code_answer=code_answer, user_answer=user_answer)
         case other_type:
             raise ValueError(f'Неизвестный тип {other_type}.')
 

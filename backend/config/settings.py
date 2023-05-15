@@ -15,6 +15,9 @@ def get_env_variable(name: str):
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = get_env_variable('SECRET_KEY')
+SANDBOX_API_URL = get_env_variable('SANDBOX_API_URL')
+SANDBOX_API_HEADER = get_env_variable('SANDBOX_API_HEADER')
+SANDBOX_API_TOKEN = get_env_variable('SANDBOX_API_TOKEN')
 
 DEBUG = get_env_variable('DEBUG') == 'True'
 
