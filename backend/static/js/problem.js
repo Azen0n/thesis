@@ -1,29 +1,34 @@
 document.addEventListener('DOMContentLoaded', main, false);
 let instance;
+let stopwatchElement;
 
 function main() {
-    let answerElement = document.getElementById('answer');
-    renderAnswer(answerElement);
-    let resultElement = document.getElementById('result');
+    let descriptionElement = document.getElementById('description');
+    descriptionElement.innerHTML = marked.parse(descriptionElement.innerText);
 
-    document.getElementById('answer_form').addEventListener('submit', function (e) {
-        validateAnswer(answerElement).then((data) => {
-            processAnswerResultData(data);
+    stopwatchElement = document.getElementById('stopwatch');
+    setInterval(updateStopwatch, 1000);
+
+    let answerElement = document.getElementById('answer');
+    if (answerElement !== null) {
+        renderAnswer(answerElement);
+
+        let resultElement = document.getElementById('result');
+
+        document.getElementById('answer_form').addEventListener('submit', function (e) {
+            resultElement.innerHTML = `Запрос обрабатывается...`;
+            validateAnswer(answerElement).then((data) => {
+                processAnswerResultData(data);
+            });
+            e.preventDefault();
         });
-        e.preventDefault();
-    });
-    document.getElementById('run_stdin_button').addEventListener('click', function () {
-        resultElement.innerHTML = `Запрос обрабатывается...`;
-        runStdin(answerElement).then((data) => {
-            processRunStdinResultData(data);
+        document.getElementById('run_stdin_button').addEventListener('click', function () {
+            resultElement.innerHTML = `Запрос обрабатывается...`;
+            runStdin(answerElement).then((data) => {
+                processRunStdinResultData(data);
+            });
         });
-    });
-    document.getElementById('run_tests_button').addEventListener('click', function () {
-        resultElement.innerHTML = `Запрос обрабатывается...`;
-        validateAnswer(answerElement).then((data) => {
-            processAnswerResultData(data);
-        });
-    });
+    }
 }
 
 function renderAnswer(answerElement) {
@@ -115,6 +120,13 @@ function fillInSingleBlank(answerElement, correctAnswers) {
 function code(answerElement, correctAnswers) {
     if (correctAnswers == null) {
         answerElement.innerHTML = `
+        <p>
+            Особенности запуска кода:
+            <ol>
+                <li>Все математические операции, кроме инкремента, приводятся к float.</li>
+                <li>Управляющие последовательности необходимо экранировать. Например, "\\n" → "\\\\n".</li>
+            </ol>
+        </p>
         <p>Код на Python (stdin → stdout)</p>
         <div id="code" style="position: relative; border: 2px solid #ccc; width: 700px;"></div>
         `;
@@ -134,7 +146,7 @@ function code(answerElement, correctAnswers) {
             stdinStdout.push(`${stdin} → ${tests[i]}`);
         }
         answerElement.innerHTML = `
-        <p>Код на Python (stdin → stdout)</p>
+        <p>Код на Python</p>
         <p>Тесты:</p>
         ${stdinStdout.join('<br>')}
         `;
@@ -165,6 +177,7 @@ function getAnswerData() {
         default:
             console.error(`Unknown type '${answerType}'`);
     }
+    data['time_elapsed_in_seconds'] = parseInt(stopwatchElement.innerHTML);
     return data;
 }
 
@@ -239,8 +252,10 @@ function processAnswerResultData(data) {
     if (coefficient === undefined) {
         coefficient = result['error'];
     } else {
-        let submitButton = document.getElementById('submit_button');
-        submitButton.remove();
+        if (result['is_answered'] === true) {
+            let submitButton = document.getElementById('submit_button');
+            submitButton.remove();
+        }
     }
     let resultElement = document.getElementById('result');
     resultElement.innerHTML = `${coefficient}`;
@@ -293,4 +308,8 @@ function encodeHtmlEntities(str) {
     return str.replace(/[&<>"'/`()+\-;=\[\]^{|}~]/g, function (match) {
         return htmlEntities[match] || match;
     });
+}
+
+function updateStopwatch() {
+    stopwatchElement.innerHTML = parseInt(stopwatchElement.innerHTML) + 1;
 }

@@ -9,6 +9,7 @@ from answers.create_answer import create_user_answer
 from answers.utils import validate_answer_by_type, validate_answer_user_access
 from config.settings import SANDBOX_API_URL, SANDBOX_API_HEADER, SANDBOX_API_TOKEN
 from courses.models import Semester, Problem, PRACTICE_TYPES
+from courses.utils import is_problem_answered
 
 
 def validate_answer(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -> HttpResponse:
@@ -20,11 +21,16 @@ def validate_answer(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -
         return json_response
     try:
         data = json.loads(request.body)
+        if not data.get('time_elapsed_in_seconds'):
+            time_elapsed_in_seconds = None
+        else:
+            time_elapsed_in_seconds = data.get('time_elapsed_in_seconds')
         coefficient, answer = validate_answer_by_type(data)
-        create_user_answer(request.user, semester, problem, coefficient, answer)
+        create_user_answer(request.user, semester, problem, coefficient, answer, time_elapsed_in_seconds)
+        is_answered = is_problem_answered(request.user, semester, problem)
     except (ValueError, NotImplementedError) as e:
         return JsonResponse(json.dumps({'error': str(e)}), safe=False)
-    return JsonResponse(json.dumps({'coefficient': coefficient}), safe=False)
+    return JsonResponse(json.dumps({'coefficient': coefficient, 'is_answered': is_answered}), safe=False)
 
 
 def run_stdin(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -> HttpResponse:

@@ -22,7 +22,7 @@ DIFFICULTY_COEFFICIENT = {
 
 @transaction.atomic
 def create_user_answer(user: User, semester: Semester, problem: Problem,
-                       coefficient: float, answer: GivenAnswer):
+                       coefficient: float, answer: GivenAnswer, time_elapsed_in_seconds: float | None):
     """Создает ответ пользователя на задание и добавляет баллы в его
     главную тему и подтемы.
     """
@@ -35,7 +35,8 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
         semester=semester,
         problem=problem,
         is_solved=is_solved,
-        coefficient=coefficient
+        coefficient=coefficient,
+        time_elapsed_in_seconds=time_elapsed_in_seconds
     )
     create_given_user_answers(problem.type, answer, user_answer)
     progress = Progress.objects.filter(

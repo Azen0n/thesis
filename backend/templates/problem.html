@@ -11,7 +11,7 @@
     <h4>Тема: <a href="{% url 'topic' semester.pk problem.main_topic.pk %}">{{ problem.main_topic.title }}</a></h4>
     <div id="problem" data-problem="{{ problem.id }}" data-semester="{{ semester.pk }}">
         <h3>{{ problem.title }} ({{ problem.get_difficulty_display }})</h3>
-        <p>{{ problem.description }}</p>
+        <p id="description">{{ problem.description }}</p>
         {% if problem.sub_topics.exists %}
             <p>Подтемы:
                 {% for sub_topic in problem.sub_topics.all %}
@@ -19,29 +19,33 @@
                 {% endfor %}
             </p>
         {% endif %}
+        {% if test_example %}
+            <p>Пример (stdin → stdout)</p>
+            <pre>{{ test_example.input }} → {{ test_example.output }}</pre>
+        {% endif %}
         {% if is_answered %}
             Вы уже решали это задание.
-        {% endif %}
-        <form id="answer_form" action="">
-            {% csrf_token %}
-            <div id="answer" data-answer="{{ answer }}"
-                    {% if is_teacher %}
-                        data-correct="{{ correct_answers }}
+        {% else %}
+            <form id="answer_form" action="">
+                {% csrf_token %}
+                <div id="answer" data-answer="{{ answer }}"
+                        {% if is_teacher %}
+                            data-correct="{{ correct_answers }}
                     {% endif %}">
-            </div>
-            {% if is_practice_problem %}
-                <label for="stdin">Ввод (stdin, через запятую)
-                    <input id="stdin">
-                </label>
-                <button id="run_stdin_button" type="button">Запустить</button>
-                <button id="run_tests_button" type="submit">Отправить</button>
-            {% else %}
+                </div>
+                {% if is_practice_problem %}
+                    <label for="stdin">Ввод (stdin, через запятую)
+                        <input id="stdin">
+                    </label>
+                    <button id="run_stdin_button" type="button">Запустить</button>
+                {% endif %}
                 {% if not is_answered and not is_topic_completed and not is_teacher %}
                     <button id="submit_button" type="submit">Отправить</button>
                 {% endif %}
-            {% endif %}
-        </form>
+            </form>
+        {% endif %}
         <div id="result"></div>
+        <div id="stopwatch" hidden>0</div>
     </div>
     <div>
         {% if type == 'theory' %}

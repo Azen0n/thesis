@@ -9,10 +9,10 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import ListView
 
-from algorithm.models import UserAnswer, Progress
+from algorithm.models import Progress
 from .models import Semester, Topic, Problem, PRACTICE_TYPES, SemesterCode
 from answers.utils import get_answer_safe_data, get_correct_answers
-from .utils import is_problem_topic_completed, generate_join_code
+from .utils import is_problem_topic_completed, generate_join_code, is_problem_answered, get_first_test
 
 
 class SemesterListView(ListView):
@@ -109,12 +109,9 @@ class ProblemView(View):
             progress = Progress.objects.get(user=request.user, semester=semester, topic=problem.main_topic)
             if problem.type in PRACTICE_TYPES and not progress.is_theory_low_reached():
                 return render(request, 'error.html', {'message': 'Тест по теории не завершен.'})
-            is_answered = UserAnswer.objects.filter(
-                user=request.user,
-                semester=semester,
-                problem=problem
-            ).exists()
+            is_answered = is_problem_answered(request.user, semester, problem)
             is_topic_completed = is_problem_topic_completed(request.user, semester, problem)
+            test_example = get_first_test(problem)
             context = {
                 'is_teacher': is_teacher,
                 'semester': semester,
@@ -123,6 +120,7 @@ class ProblemView(View):
                 'is_topic_completed': is_topic_completed,
                 'answer': json.dumps(answer),
                 'is_practice_problem': problem.type in PRACTICE_TYPES,
+                'test_example': test_example,
             }
         else:
             context = {

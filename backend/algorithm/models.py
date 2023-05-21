@@ -55,6 +55,7 @@ class UserAnswer(AbstractUserSemester):
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
     is_solved = models.BooleanField()
     coefficient = models.FloatField()
+    time_elapsed_in_seconds = models.FloatField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -201,9 +201,13 @@ def check_weakest_link(user: User, semester: Semester, problem: Problem, is_solv
     """
     user_weakest_link_state = UserWeakestLinkState.objects.get(user=user, semester=semester)
     if user_weakest_link_state.state == WeakestLinkState.IN_PROGRESS:
+        if problem not in WeakestLinkProblem.objects.filter(user=user, semester=semester):
+            return False
         weakest_link_in_progress(user, semester, problem, is_solved)
     user_weakest_link_state.refresh_from_db()
     if user_weakest_link_state.state == WeakestLinkState.DONE:
+        if problem not in WeakestLinkProblem.objects.filter(user=user, semester=semester):
+            return False
         weakest_link_done(user, semester)
         return True
     return False

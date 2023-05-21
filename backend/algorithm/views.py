@@ -49,6 +49,7 @@ def next_theory_problem(request: HttpRequest,
             'problem': problem,
             'answer': json.dumps(answer),
             'type': 'theory',
+            'is_practice_problem': False,
         }
         return render(request, 'problem.html', context)
     except ObjectDoesNotExist:
@@ -71,6 +72,7 @@ def next_practice_problem(request: HttpRequest,
             'problem': problem,
             'answer': json.dumps(answer),
             'type': 'practice',
+            'is_practice_problem': True,
         }
         return render(request, 'problem.html', context)
     except ObjectDoesNotExist:

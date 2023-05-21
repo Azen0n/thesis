@@ -216,7 +216,7 @@ def validate_answer_user_access(user: User, semester: Semester, problem: Problem
         json_response = validate_practice_problem(user, semester, problem)
         if json_response is not None:
             return json_response
-    if UserAnswer.objects.filter(problem=problem, semester=semester, user=user).exists():
+    elif UserAnswer.objects.filter(problem=problem, semester=semester, user=user).exists():
         return JsonResponse(json.dumps({'error': 'Вы уже отправили решение по этому заданию.'}), safe=False)
     return None
 
