@@ -252,9 +252,10 @@ function processAnswerResultData(data) {
     if (coefficient === undefined) {
         coefficient = result['error'];
     } else {
+        coefficient = parseInt(coefficient) === 1 ? 'Верно' : 'Неверно';
+        coefficient += ` (${result['answer'][1]})`;
         if (result['is_answered'] === true) {
-            let submitButton = document.getElementById('submit_button');
-            submitButton.remove();
+            removeCodeControls();
         }
     }
     let resultElement = document.getElementById('result');
@@ -312,4 +313,11 @@ function encodeHtmlEntities(str) {
 
 function updateStopwatch() {
     stopwatchElement.innerHTML = parseInt(stopwatchElement.innerHTML) + 1;
+}
+
+function removeCodeControls() {
+    document.getElementById('submit_button').remove();
+    document.getElementById('run_stdin_button').remove();
+    document.getElementById('stdin_label_input').remove();
+    instance.setOption('readOnly', 'true');
 }
