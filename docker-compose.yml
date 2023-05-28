@@ -21,6 +21,8 @@ services:
       - ./backend:/code
     ports:
       - "${EXT_DJANGO_PORT}:${INT_DJANGO_PORT}"
+    expose:
+      - "${EXT_DJANGO_PORT}"
     environment:
       - POSTGRES_NAME=${POSTGRES_NAME}
       - POSTGRES_USER=${POSTGRES_USER}
