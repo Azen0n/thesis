@@ -55,6 +55,8 @@ def get_practice_problems_for_weakest_link(user: User, semester: Semester,
     ).order_by('-created_at').exclude(problem=problem)
     number_of_solved_similar_problems = 0
     for answer in main_topic_answers:
+        if problem == answer.problem:
+            continue
         if is_problems_similar(problem, answer.problem):
             if not answer.is_solved:
                 return problem, answer.problem
