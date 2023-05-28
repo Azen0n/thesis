@@ -6,6 +6,7 @@ from urllib.parse import quote
 import requests
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
+from algorithm.utils import format_log_problem
 from answers.create_answer import create_user_answer
 from answers.utils import validate_answer_by_type, validate_answer_user_access
 from config.settings import SANDBOX_API_URL, SANDBOX_API_HEADER, SANDBOX_API_TOKEN
@@ -32,18 +33,18 @@ def validate_answer(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -
         create_user_answer(request.user, semester, problem, coefficient, answer, time_elapsed_in_seconds)
         is_answered = is_problem_answered(request.user, semester, problem)
     except (ValueError, NotImplementedError) as e:
-        logger.error(f'{validate_answer.__name__} [user={request.user}'
-                     f' problem={problem.id}'
-                     f' data={json.loads(request.body)}]: {e}')
+        logger.error(f'( ! ) {format_log_problem(request.user, problem)}'
+                     f' [ошибка во время проверки задания] '
+                     f'payload {json.loads(request.body)} error {e}')
         return JsonResponse(json.dumps({'error': str(e)}), safe=False)
     json_data = json.dumps({
         'coefficient': coefficient,
         'is_answered': is_answered,
         'answer': answer}
     )
-    logger.info(f'{validate_answer.__name__} [user={request.user}'
-                f' problem={problem.id}'
-                f' {json_data}]')
+    logger.info(f'(   ) {format_log_problem(request.user, problem)}'
+                f' [проверка задания]'
+                f' response {json_data}')
     return JsonResponse(json_data, safe=False)
 
 
@@ -74,12 +75,12 @@ def run_stdin(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -> Http
             }
         )
     except Exception as e:
-        logger.error(f'{run_stdin.__name__} [user={request.user}'
-                     f' problem={problem.id}'
-                     f' data={json.loads(request.body)}]: {e}')
+        logger.error(f'( ! ) {format_log_problem(request.user, problem)}'
+                     f' [ошибка во время запуска кода] '
+                     f'payload {json.loads(request.body)} error {e}')
         return JsonResponse(json.dumps({'error': str(e)}), safe=False)
-    logger.info(f'{run_stdin.__name__} [user={request.user}'
-                f' problem={problem.id}'
-                f' code=\n{code}\n'
-                f'stdin={stdin}] response={response.json()}')
+    logger.info(f'(   ) {format_log_problem(request.user, problem)}'
+                f' [запуск кода]'
+                f' code {code} stdin {stdin}'
+                f' response {response.json()}')
     return JsonResponse(json.dumps(response.json()), safe=False)

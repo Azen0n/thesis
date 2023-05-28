@@ -179,11 +179,7 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname}\t{asctime}\t{module} ::: {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{levelname} {message}',
+            'format': '{asctime} {message}',
             'style': '{',
         },
     },

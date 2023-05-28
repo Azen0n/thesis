@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import QuerySet
@@ -16,6 +18,8 @@ DIFFICULTY_COEFFICIENT = {
     Difficulty.HARD.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_HARD,
 }
 
+logger = logging.getLogger(__name__)
+
 
 def start_weakest_link_when_ready(user: User, semester: Semester) -> Problem | None:
     """Заполняет очередь слабого звена, если выполнено условие
@@ -29,6 +33,8 @@ def start_weakest_link_when_ready(user: User, semester: Semester) -> Problem | N
             topics = get_topics_of_problems(*problems)
             topics = remove_completed_topics(user, semester, topics)
             if not topics:
+                logger.info(f'(   ) {user.username:<10}'
+                            f' [поиск проблемных тем] все темы закрыты')
                 return
             max_difficulty = min(problems[0].difficulty, problems[1].difficulty)
             fill_weakest_link_queue(user, semester, topics, Difficulty(max_difficulty))
@@ -105,8 +111,12 @@ def fill_weakest_link_queue(user: User, semester: Semester,
     if final_topic_groups:
         add_topics_to_weakest_link_queue(user, semester, final_topic_groups)
         update_user_weakest_link_state(user, semester, WeakestLinkState.IN_PROGRESS)
+        logger.info(f'(   ) {user.username:<10} [поиск проблемных тем]'
+                    f' создано групп: {len(final_topic_groups)}')
     else:
-        raise NotImplementedError('Доступные задания с темами группы не найдены.')
+        logger.error(f'( ! ) {user.username:<10} [поиск проблемных тем]'
+                     f' задания с темами групп не найдены.')
+        raise NotImplementedError('Доступные задания с темами групп не найдены.')
 
 
 def add_topics_to_weakest_link_queue(user: User, semester: Semester,
