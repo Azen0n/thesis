@@ -29,6 +29,7 @@ class Progress(AbstractUserSemester):
             models.UniqueConstraint(fields=['user', 'semester', 'topic'],
                                     name='unique_user_semester_topic')
         ]
+        ordering = ['user__username', 'topic__created_at']
 
     @property
     def points(self) -> float:
@@ -65,6 +66,9 @@ class UserAnswer(AbstractUserSemester):
                 f' is_solved={self.is_solved}, coefficient={self.coefficient},'
                 f' time_elapsed_in_seconds={self.time_elapsed_in_seconds}')
 
+    class Meta:
+        ordering = ['-created_at']
+
 
 class WeakestLinkTopic(AbstractUserSemester):
     """Темы проблемных заданий с указанием группы."""
@@ -74,6 +78,9 @@ class WeakestLinkTopic(AbstractUserSemester):
     def __str__(self):
         return (f'semester={self.semester}, topic={self.topic},'
                 f' group_number={self.group_number}, user={self.user}')
+
+    class Meta:
+        ordering = ['user__username', 'group_number']
 
 
 class WeakestLinkProblem(AbstractUserSemester):
@@ -85,6 +92,9 @@ class WeakestLinkProblem(AbstractUserSemester):
     def __str__(self):
         return (f'semester={self.semester}, problem={self.problem},'
                 f' group_number={self.group_number}, user={self.user}')
+
+    class Meta:
+        ordering = ['user__username', 'group_number']
 
 
 class WeakestLinkState(models.TextChoices):
@@ -110,6 +120,7 @@ class UserWeakestLinkState(AbstractUserSemester):
             models.UniqueConstraint(fields=['user', 'semester'],
                                     name='unique_user_semester')
         ]
+        ordering = ['user__username']
 
     def __str__(self):
         return (f'semester={self.semester}, user={self.user},'
