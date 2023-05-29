@@ -1,9 +1,8 @@
-from typing import Callable
-
 from django.contrib.auth.models import User
 
-from algorithm.models import Progress, UserWeakestLinkState, WeakestLinkState
+from algorithm.models import Progress, UserWeakestLinkState, WeakestLinkState, UserAnswer
 from courses.models import Semester, Problem
+from courses.utils import is_problem_answered
 
 
 def create_user_progress_if_not_exists(semester: Semester, user: User):
@@ -24,6 +23,19 @@ def create_user_progress_if_not_exists(semester: Semester, user: User):
         UserWeakestLinkState.objects.create(user=user,
                                             semester=semester,
                                             state=WeakestLinkState.NONE)
+
+
+def skip_problem(user: User, semester: Semester, problem: Problem):
+    """Пропускает задание."""
+    if is_problem_answered(user, semester, problem):
+        return
+    UserAnswer.objects.create(
+        user=user,
+        semester=semester,
+        problem=problem,
+        coefficient=0,
+        is_solved=None
+    )
 
 
 def format_log_problem(user: User, problem: Problem) -> str:

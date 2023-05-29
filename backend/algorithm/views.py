@@ -7,11 +7,12 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 
-from algorithm.models import Progress
-from algorithm.utils import create_user_progress_if_not_exists
+from algorithm.models import Progress, UserWeakestLinkState, WeakestLinkState, WeakestLinkTopic, WeakestLinkProblem
+from algorithm.problem_selector.weakest_link import update_user_weakest_link_state
+from algorithm.utils import create_user_progress_if_not_exists, skip_problem
 from algorithm.problem_selector import (next_theory_problem as get_next_theory_problem,
                                         next_practice_problem as get_next_practice_problem)
-from courses.models import Semester, SemesterCode
+from courses.models import Semester, SemesterCode, Problem
 from answers.utils import get_answer_safe_data
 
 logger = logging.getLogger(__name__)
@@ -84,3 +85,34 @@ def next_practice_problem(request: HttpRequest,
         return render(request, 'error.html', {'message': 'Страница не найдена.'}, status=404)
     except NotImplementedError as e:
         return render(request, 'error.html', {'message': f'{e}'})
+
+
+def skip_theory_problem(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -> HttpResponse:
+    """Пропускает теоретическое задание и подбирает следующее. Пропуском считается
+    ответ на задание, в котором значение ответа равно null.
+    """
+    if not request.user.is_authenticated:
+        return render(request, 'error.html', {'message': 'Войдите в систему.'}, status=401)
+    semester = Semester.objects.get(pk=semester_pk)
+    problem = Problem.objects.get(pk=problem_pk)
+    skip_problem(request.user, semester, problem)
+    logger.info(f'(   ) {request.user.username:<10} [задание {problem.title} пропущено]')
+    return next_theory_problem(request, semester_pk, problem.main_topic.pk)
+
+
+def skip_practice_problem(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -> HttpResponse:
+    """Пропускает практическое задание и подбирает следующее. Пропуском считается
+    ответ на задание, в котором значение ответа равно null.
+    """
+    if not request.user.is_authenticated:
+        return render(request, 'error.html', {'message': 'Войдите в систему.'}, status=401)
+    semester = Semester.objects.get(pk=semester_pk)
+    problem = Problem.objects.get(pk=problem_pk)
+    skip_problem(request.user, semester, problem)
+    logger.info(f'(   ) {request.user.username:<10} [задание {problem.title} пропущено]')
+    user_weakest_link_state = UserWeakestLinkState.objects.get(user=request.user, semester=semester).state
+    if user_weakest_link_state == WeakestLinkState.IN_PROGRESS:
+        WeakestLinkTopic.objects.filter(user=request.user, semester=semester).delete()
+        WeakestLinkProblem.objects.filter(user=request.user, semester=semester).delete()
+        update_user_weakest_link_state(request.user, semester, WeakestLinkState.NONE)
+    return next_practice_problem(request, semester_pk)

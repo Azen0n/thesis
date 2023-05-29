@@ -58,6 +58,8 @@ def get_practice_problems_for_weakest_link(user: User, semester: Semester,
         if problem == answer.problem:
             continue
         if is_problems_similar(problem, answer.problem):
+            if answer.is_solved is None:
+                return None
             if not answer.is_solved:
                 return problem, answer.problem
             number_of_solved_similar_problems += 1

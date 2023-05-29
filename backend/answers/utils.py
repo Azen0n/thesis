@@ -216,7 +216,7 @@ def validate_answer_user_access(user: User, semester: Semester, problem: Problem
         json_response = validate_practice_problem(user, semester, problem)
         if json_response is not None:
             return json_response
-    elif UserAnswer.objects.filter(problem=problem, semester=semester, user=user).exists():
+    elif UserAnswer.objects.filter(problem=problem, semester=semester, user=user, is_solved__isnull=False).exists():
         return JsonResponse(json.dumps({'error': 'Вы уже отправили решение по этому заданию.'}), safe=False)
     return None
 
@@ -232,7 +232,8 @@ def validate_practice_problem(user: User, semester: Semester, problem: Problem) 
     last_answer = UserAnswer.objects.filter(
         problem=problem,
         semester=semester,
-        user=user
+        user=user,
+        is_solved__isnull=False
     ).order_by('-created_at').first()
     if last_answer is not None:
         if last_answer.is_solved:
@@ -240,7 +241,8 @@ def validate_practice_problem(user: User, semester: Semester, problem: Problem) 
     number_of_answers = UserAnswer.objects.filter(
         problem=problem,
         semester=semester,
-        user=user
+        user=user,
+        is_solved__isnull=False
     ).count()
     if number_of_answers >= Constants.MAX_NUMBER_OF_ATTEMPTS_PER_PRACTICE_PROBLEM:
         return JsonResponse(json.dumps({'error': 'Вы истратили все попытки на решение этого задания.'}), safe=False)

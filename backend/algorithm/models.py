@@ -53,14 +53,17 @@ class Progress(AbstractUserSemester):
 
 class UserAnswer(AbstractUserSemester):
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
-    is_solved = models.BooleanField()
+    is_solved = models.BooleanField(blank=True, null=True)
     coefficient = models.FloatField()
     time_elapsed_in_seconds = models.FloatField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
+        if self.is_solved is None:
+            return f'user={self.user}, problem={self.problem} (пропущено)'
         return (f'user={self.user}, problem={self.problem},'
-                f' is_solved={self.is_solved}')
+                f' is_solved={self.is_solved}, coefficient={self.coefficient},'
+                f' time_elapsed_in_seconds={self.time_elapsed_in_seconds}')
 
 
 class WeakestLinkTopic(AbstractUserSemester):

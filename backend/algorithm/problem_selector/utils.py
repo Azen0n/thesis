@@ -126,7 +126,8 @@ def get_last_practice_user_answers(user: User, semester: Semester) -> QuerySet[U
     return UserAnswer.objects.filter(
         user=user,
         semester=semester,
-        problem__type__in=PRACTICE_TYPES
+        problem__type__in=PRACTICE_TYPES,
+        is_solved__isnull=False
     ).order_by('-created_at')
 
 
@@ -135,7 +136,8 @@ def get_last_theory_user_answers(user: User, topic: Topic) -> QuerySet[UserAnswe
     return UserAnswer.objects.filter(
         user=user,
         problem__main_topic=topic,
-        problem__type__in=THEORY_TYPES
+        problem__type__in=THEORY_TYPES,
+        is_solved__isnull=False
     ).order_by('-created_at')
 
 
