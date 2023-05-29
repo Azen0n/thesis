@@ -90,7 +90,7 @@ def filter_problems_with_suitable_difficulty(problems: QuerySet[Problem],
         if progress is None:
             continue
         difficulty = get_suitable_problem_difficulty(progress.skill_level)
-        if problem.difficulty == difficulty.value:
+        if problem.difficulty <= difficulty.value:
             appropriate_problem_ids.append(problem.id)
     return Problem.objects.filter(id__in=appropriate_problem_ids)
 
