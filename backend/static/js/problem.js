@@ -123,8 +123,16 @@ function code(answerElement, correctAnswers) {
         <p>
             Особенности запуска кода:
             <ol>
-                <li>Все математические операции, кроме инкремента, приводятся к float.</li>
-                <li>Управляющие последовательности необходимо экранировать. Например, "\\n" → "\\\\n".</li>
+                <li>Если в задании присутствуют входные данные, программа должна считывать их с клавиатуры
+                 (например, <code>x = float(input())</code>). Каждый параметр во входных данных вводится с новой строки,
+                    если иного не указано в задании.</li>
+                <li>Если в задании явно не указан тип вводимых параметров, результат <code>input</code> приводится к 
+                 <code>float</code> (например, <code>x = float(input())</code>).</li>
+                <li>Все математические операции, кроме инкремента, приводятся к <code>float</code>.</li>
+                <li>Внутри <code>input()</code> не должно быть текста. <code>print()</code> должен
+                 выводить только то, что требуется в задании.</li>
+                <li>Управляющие последовательности необходимо экранировать. Например, <code>"\\n"</code> →
+                 <code>"\\\\n"</code>.</li>
             </ol>
         </p>
         <p>Код на Python (stdin → stdout)</p>
@@ -319,5 +327,6 @@ function removeCodeControls() {
     document.getElementById('submit_button').remove();
     document.getElementById('run_stdin_button').remove();
     document.getElementById('stdin_label_input').remove();
+    document.getElementById('skip').remove();
     instance.setOption('readOnly', 'true');
 }
