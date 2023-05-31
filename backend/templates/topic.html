@@ -1,41 +1,206 @@
 {% extends 'base.html' %}
 {% block title %}
-    {{ topic.title }}
+    {{ semester.course.title }}
+{% endblock %}
+{% block head_scripts %}
 {% endblock %}
 {% block content %}
-    <h3>
-        <span title="Обязательный">{% if topic.is_required %}*{% endif %}</span>
-        <a href="{% url 'semester' semester.pk %}">{{ semester.course.title }}</a> > {{ topic.title }}
-    </h3>
-    <p>{{ topic.time_to_complete }} ч</p>
-    <p><b>Теоретический материал</b></p>
-    <ul>
-        {% for attachment in topic.attachment_set.all %}
-            <li>
-                <a href="{{ attachment.url }}">{{ attachment.name }}</a>
+    <div class="container white_block py-4">
+        <div class="col-12 g-0 row align-items-center">
+            <h4 class="col-auto px-4 me-auto">
+                {{ topic.title }}
+            </h4>
+            <div class="container row align-items-center">
+                <div class="col-7 align-items-center">
+                    <div class="container bold_text pb-2 ps-0">
+                        Прогресс
+                    </div>
+                    <div class="progress" role="progressbar">
+                        <div class="progress-bar" style="width: {{ progress_percent }}%">{{ progress_percent }}%</div>
+                    </div>
+                </div>
+                <div class="container col-auto align-items-center">
+                    <div class="row bold_text">
+                        <div>
+                            Теория
+                        </div>
+                    </div>
+                    <span class="iconify" data-icon="bxs:star"></span>
+                    {{ theory_points|floatformat:2 }}
+                </div>
+                <div class="container col-auto align-items-center">
+                    <div class="row bold_text">
+                        Практика
+                    </div>
+                    <span class="iconify" data-icon="bxs:star"></span>
+                    {{ practice_points|floatformat:2 }}
+                </div>
+                <div class="container col-auto align-items-center">
+                    <div class="row bold_text">
+                        <div>
+                            Общий
+                        </div>
+                    </div>
+                    <span class="iconify" data-icon="bxs:star"></span>
+                    {{ total_points|floatformat:2 }}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container white_block my-4 py-2">
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="attachment-tab" data-bs-toggle="tab" data-bs-target="#attachment"
+                        type="button" role="tab" aria-controls="attachment" aria-selected="true">Теоретический
+                    материал
+                </button>
             </li>
-            {% empty %}
-            <li>
-                <p>Нет вложений</p>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="theory-tab" data-bs-toggle="tab" data-bs-target="#theory"
+                        type="button" role="tab" aria-controls="theory" aria-selected="false">Теоретические
+                    задания
+                </button>
             </li>
-        {% endfor %}
-    </ul>
-    {% if not is_teacher %}
-        <form action="{% url 'next_theory_problem' semester.pk topic.pk %}">
-            <input type="submit" value="Следующее теоретическое задание"/>
-        </form>
-        <p>Прогресс по теории: {{ theory_points|floatformat:2 }}, по практике: {{ practice_points|floatformat:2 }}</p>
-    {% endif %}
-    <p><b>Задания</b></p>
-    <table>
-        {% for problem in topic.problem_main_set.all %}
-            <tr>
-                <td>{{ forloop.counter }}.</td>
-                <td><a href="{% url 'problem' semester.pk problem.pk %}">{{ problem.title }}</a></td>
-                <td>{{ problem.difficulty }}</td>
-            </tr>
-            {% empty %}
-            <p>Нет заданий</p>
-        {% endfor %}
-    </table>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="practice-tab" data-bs-toggle="tab" data-bs-target="#practice"
+                        type="button" role="tab" aria-controls="practice" aria-selected="false">Практические
+                    задания
+                </button>
+            </li>
+        </ul>
+        <div class="tab-content" id="myTabContent">
+            <div class="tab-pane fade show active" id="attachment" role="tabpanel" aria-labelledby="attachment-tab">
+                <div class="container px205">
+                    {% for attachment in topic.attachment_set.all %}
+                        <a href="{{ attachment.url }}" target="_blank">
+                            <div class="row space my-2">
+                                <div class="col-12 g-0 row align-items-center">
+                                    <div class="number-box col-auto mx-2">
+                                        <h5 class="number">
+                                            {{ forloop.counter }}
+                                        </h5>
+                                    </div>
+                                    <div class="col-auto  me-auto">
+                                        {{ attachment.name }}
+                                    </div>
+                                    <div class="col-auto align-items-center px-2">
+                                <span class="iconify" data-icon="mi:external-link" data-width="28"
+                                      data-height="28"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+                <div class="container row px205 py-1 align-items-center">
+                    <form action="{% url 'next_theory_problem' semester.pk topic.pk %}" class="col-auto pe-3">
+                        <button type="submit" class="btn btn-primary">
+                            <span class="iconify" data-icon="fe:play" style="color: white;" data-width="28" data-height="28"></span>
+                            Следующее теоретическое задание
+                        </button>
+                    </form>
+                    <div class="container col-auto row align-items-center ms-2">
+                        <span class="iconify col-auto" data-icon="bi:exclamation-triangle-fill" style="color: gray;"
+                              data-width="19" data-height="19"></span>
+                        <p class="col-auto px-0 gray_text pt-3 small_text">
+                            Завершите тест по теории,<br>чтобы открыть доступ к практическим заданиям
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="theory" role="tabpanel" aria-labelledby="theory-tab">
+                <div class="container white_block py-2">
+                    <div class="container">
+                        {% if not theory_problems %}
+                            <p>Задания не найдены</p>
+                        {% endif %}
+                        {% for problem in theory_problems %}
+                            <a href="{% url 'problem' semester.pk problem.pk %}">
+                                <div class="row space my-2">
+                                    <div class="col-12 g-0 row align-items-center">
+                                        <div class="number-box col-auto mx-2">
+                                            <h5 class="number">
+                                                {{ forloop.counter }}
+                                            </h5>
+                                        </div>
+                                        <div class="col-auto me-auto">
+                            <span class="black_text">
+                                {{ problem.title }}
+                            </span>
+                                        </div>
+                                        {% if problem.difficulty == 1 %}
+                                            <div class="col-auto mx-4 align-items-center" title="Сложность">
+                                                <span class="iconify" data-icon="ph:star-fill" data-width="20"></span>
+                                                <span class="iconify" data-icon="ph:star-bold" data-width="20"></span>
+                                                <span class="iconify" data-icon="ph:star-bold" data-width="20"></span>
+                                            </div>
+                                        {% elif problem.difficulty == 2 %}
+                                            <div class="col-auto mx-4 align-items-center" title="Сложность">
+                                                <span class="iconify" data-icon="ph:star-fill" data-width="20"></span>
+                                                <span class="iconify" data-icon="ph:star-fill" data-width="20"></span>
+                                                <span class="iconify" data-icon="ph:star-bold" data-width="20"></span>
+                                            </div>
+                                        {% elif problem.difficulty == 3 %}
+                                            <div class="col-auto mx-4 align-items-center" title="Сложность">
+                                                <span class="iconify" data-icon="ph:star-fill" data-width="20"></span>
+                                                <span class="iconify" data-icon="ph:star-fill" data-width="20"></span>
+                                                <span class="iconify" data-icon="ph:star-fill" data-width="20"></span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="practice" role="tabpanel" aria-labelledby="practice-tab">
+                <div class="container white_block py-2">
+                    <div class="container">
+                        {% if not practice_problems %}
+                            <p>Задания не найдены</p>
+                        {% endif %}
+                        {% for problem in practice_problems %}
+                            <a href="{% url 'problem' semester.pk problem.pk %}">
+                                <div class="row space my-2">
+                                    <div class="col-12 g-0 row align-items-center">
+                                        <div class="number-box col-auto mx-2">
+                                            <h5 class="number">
+                                                {{ forloop.counter }}
+                                            </h5>
+                                        </div>
+                                        <div class="col-auto me-auto">
+                            <span class="black_text">
+                                {{ problem.title }}
+                            </span>
+                                        </div>
+                                        {% if problem.difficulty == 1 %}
+                                            <div class="col-auto mx-4 align-items-center" title="Сложность">
+                                                <span class="iconify" data-icon="ph:star-fill" data-width="20"></span>
+                                                <span class="iconify" data-icon="ph:star-bold" data-width="20"></span>
+                                                <span class="iconify" data-icon="ph:star-bold" data-width="20"></span>
+                                            </div>
+                                        {% elif problem.difficulty == 2 %}
+                                            <div class="col-auto mx-4 align-items-center" title="Сложность">
+                                                <span class="iconify" data-icon="ph:star-fill" data-width="20"></span>
+                                                <span class="iconify" data-icon="ph:star-fill" data-width="20"></span>
+                                                <span class="iconify" data-icon="ph:star-bold" data-width="20"></span>
+                                            </div>
+                                        {% elif problem.difficulty == 3 %}
+                                            <div class="col-auto mx-4 align-items-center" title="Сложность">
+                                                <span class="iconify" data-icon="ph:star-fill" data-width="20"></span>
+                                                <span class="iconify" data-icon="ph:star-fill" data-width="20"></span>
+                                                <span class="iconify" data-icon="ph:star-fill" data-width="20"></span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
 {% endblock %}

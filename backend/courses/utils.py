@@ -2,10 +2,12 @@ import random
 import re
 
 from django.contrib.auth.models import User
+from django.db.models import QuerySet, F
+from django.utils import timezone
 
 from algorithm.models import Progress, UserAnswer
 from config.settings import Constants
-from courses.models import Semester, Problem, THEORY_TYPES, PRACTICE_TYPES
+from courses.models import Semester, Problem, THEORY_TYPES, PRACTICE_TYPES, Topic, SemesterCode
 
 
 def is_problem_topic_completed(user: User, semester: Semester, problem: Problem) -> bool:
@@ -59,3 +61,48 @@ def get_first_test(problem: Problem) -> dict | None:
                 'output': stdin_stdout[1],
             }
     return test_example
+
+
+def get_annotated_semester_topics(user: User, semester: Semester) -> QuerySet[Topic]:
+    """Добавляет поля points, theory_points и practice_points
+    текущего пользователя к каждой теме.
+    """
+    topics = Topic.objects.filter(
+        progress__semester=semester,
+        progress__user=user
+    ).annotate(
+        points=F('progress__theory_points') + F('progress__practice_points'),
+        theory_points=F('progress__theory_points'),
+        practice_points=F('progress__practice_points')
+    ).order_by('module__created_at', 'created_at')
+    return topics
+
+
+def get_semester_code_context(semester: Semester) -> dict:
+    """Возвращает словарь с кодом курса, флагом того, истек ли срок действия
+    текущего кода, и датами истечения срока действия кода.
+    """
+    code = SemesterCode.objects.get(semester=semester)
+    is_code_expired = code.expired_at < timezone.now()
+    default_expiration_time = timezone.now() + timezone.timedelta(weeks=1)
+    if default_expiration_time > semester.ended_at:
+        default_expiration_time = timezone.now()
+    context = {
+        'code': code.code,
+        'is_code_expired': is_code_expired,
+        'min_expiration_time': timezone.now().strftime('%Y-%m-%dT%H:%M'),
+        'max_expiration_time': semester.ended_at.strftime('%Y-%m-%dT%H:%M'),
+        'default_expiration_time': default_expiration_time.strftime('%Y-%m-%dT%H:%M'),
+    }
+    return context
+
+
+def is_parent_topic_theory_low_reached(user: User, semester: Semester, topic: Topic) -> bool:
+    """Возвращает True, если по теории предыдущей темы набран минимальный балл."""
+    parent_topic_progress = Progress.objects.filter(
+        semester=semester, user=user, topic=topic.parent_topic
+    ).first()
+    if parent_topic_progress is not None:
+        if not parent_topic_progress.is_theory_low_reached():
+            return False
+    return True
