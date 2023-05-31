@@ -16,17 +16,27 @@ function main() {
         let resultElement = document.getElementById('result');
 
         document.getElementById('answer_form').addEventListener('submit', function (e) {
-            resultElement.innerHTML = `Запрос обрабатывается...`;
-            validateAnswer(answerElement).then((data) => {
-                processAnswerResultData(data);
-            });
+            resultElement.innerHTML = 'Запрос обрабатывается...';
+            try {
+                validateAnswer(answerElement).then((data) => {
+                    processAnswerResultData(data);
+                });
+            } catch (error) {
+                console.log(error);
+                resultElement.innerHTML = 'Произошла ошибка.';
+            }
             e.preventDefault();
         });
         document.getElementById('run_stdin_button').addEventListener('click', function () {
-            resultElement.innerHTML = `Запрос обрабатывается...`;
-            runStdin(answerElement).then((data) => {
-                processRunStdinResultData(data);
-            });
+            resultElement.innerHTML = 'Запрос обрабатывается...';
+            try {
+                runStdin(answerElement).then((data) => {
+                    processRunStdinResultData(data);
+                });
+            } catch (error) {
+                console.log(error);
+                resultElement.innerHTML = 'Произошла ошибка.';
+            }
         });
     }
 }
