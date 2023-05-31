@@ -34,7 +34,7 @@
                     {% endif %}">
                 </div>
                 {% if is_practice_problem %}
-                    <label for="stdin">Ввод (stdin, через запятую)
+                    <label for="stdin" id="stdin_label_input">Ввод (stdin, через запятую)
                         <input id="stdin">
                     </label>
                     <button id="run_stdin_button" type="button">Запустить</button>
@@ -52,9 +52,15 @@
             <form action="{% url 'next_theory_problem' semester.pk problem.main_topic.pk %}">
                 <input type="submit" value="Следующее задание"/>
             </form>
+            <form id="skip" action="{% url 'skip_theory_problem' semester.pk problem.pk %}">
+                <input type="submit" value="Пропустить"/>
+            </form>
         {% elif type == 'practice' %}
             <form action="{% url 'next_practice_problem' semester.pk %}">
                 <input type="submit" value="Следующее задание"/>
+            </form>
+            <form id="skip" action="{% url 'skip_practice_problem' semester.pk problem.pk %}">
+                <input type="submit" value="Пропустить"/>
             </form>
         {% endif %}
     </div>

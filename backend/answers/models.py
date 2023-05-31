@@ -80,8 +80,8 @@ class Answer(models.Model):
                                                  on_delete=models.CASCADE,
                                                  blank=True, null=True)
     fill_in_single_blank = models.TextField(blank=True, null=True)
-    code_answer = models.ForeignKey(CodeAnswer, on_delete=models.CASCADE,
-                                    blank=True, null=True)
+    code_answer = models.OneToOneField(CodeAnswer, on_delete=models.CASCADE,
+                                       blank=True, null=True)
 
     def __str__(self):
         answer = ''

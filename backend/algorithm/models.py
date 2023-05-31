@@ -29,6 +29,7 @@ class Progress(AbstractUserSemester):
             models.UniqueConstraint(fields=['user', 'semester', 'topic'],
                                     name='unique_user_semester_topic')
         ]
+        ordering = ['user__username', 'topic__created_at']
 
     @property
     def points(self) -> float:
@@ -53,14 +54,20 @@ class Progress(AbstractUserSemester):
 
 class UserAnswer(AbstractUserSemester):
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
-    is_solved = models.BooleanField()
+    is_solved = models.BooleanField(blank=True, null=True)
     coefficient = models.FloatField()
     time_elapsed_in_seconds = models.FloatField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
+        if self.is_solved is None:
+            return f'user={self.user}, problem={self.problem} (пропущено)'
         return (f'user={self.user}, problem={self.problem},'
-                f' is_solved={self.is_solved}')
+                f' is_solved={self.is_solved}, coefficient={self.coefficient},'
+                f' time_elapsed_in_seconds={self.time_elapsed_in_seconds}')
+
+    class Meta:
+        ordering = ['-created_at']
 
 
 class WeakestLinkTopic(AbstractUserSemester):
@@ -72,6 +79,9 @@ class WeakestLinkTopic(AbstractUserSemester):
         return (f'semester={self.semester}, topic={self.topic},'
                 f' group_number={self.group_number}, user={self.user}')
 
+    class Meta:
+        ordering = ['user__username', 'group_number']
+
 
 class WeakestLinkProblem(AbstractUserSemester):
     """Задание из очереди слабого звена."""
@@ -82,6 +92,9 @@ class WeakestLinkProblem(AbstractUserSemester):
     def __str__(self):
         return (f'semester={self.semester}, problem={self.problem},'
                 f' group_number={self.group_number}, user={self.user}')
+
+    class Meta:
+        ordering = ['user__username', 'group_number']
 
 
 class WeakestLinkState(models.TextChoices):
@@ -107,6 +120,7 @@ class UserWeakestLinkState(AbstractUserSemester):
             models.UniqueConstraint(fields=['user', 'semester'],
                                     name='unique_user_semester')
         ]
+        ordering = ['user__username']
 
     def __str__(self):
         return (f'semester={self.semester}, user={self.user},'

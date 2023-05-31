@@ -1,15 +1,19 @@
 import json
+import logging
 from uuid import UUID
 from urllib.parse import quote
 
 import requests
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
+from algorithm.utils import format_log_problem
 from answers.create_answer import create_user_answer
 from answers.utils import validate_answer_by_type, validate_answer_user_access
 from config.settings import SANDBOX_API_URL, SANDBOX_API_HEADER, SANDBOX_API_TOKEN
 from courses.models import Semester, Problem, PRACTICE_TYPES
 from courses.utils import is_problem_answered
+
+logger = logging.getLogger(__name__)
 
 
 def validate_answer(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -> HttpResponse:
@@ -29,8 +33,19 @@ def validate_answer(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -
         create_user_answer(request.user, semester, problem, coefficient, answer, time_elapsed_in_seconds)
         is_answered = is_problem_answered(request.user, semester, problem)
     except (ValueError, NotImplementedError) as e:
+        logger.error(f'( ! ) {format_log_problem(request.user, problem)}'
+                     f' [ошибка во время проверки задания] '
+                     f'payload {json.loads(request.body)} error {e}')
         return JsonResponse(json.dumps({'error': str(e)}), safe=False)
-    return JsonResponse(json.dumps({'coefficient': coefficient, 'is_answered': is_answered}), safe=False)
+    json_data = json.dumps({
+        'coefficient': coefficient,
+        'is_answered': is_answered,
+        'answer': answer}
+    )
+    logger.info(f'(   ) {format_log_problem(request.user, problem)}'
+                f' [проверка задания]'
+                f' response {json_data}')
+    return JsonResponse(json_data, safe=False)
 
 
 def run_stdin(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -> HttpResponse:
@@ -60,5 +75,12 @@ def run_stdin(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -> Http
             }
         )
     except Exception as e:
+        logger.error(f'( ! ) {format_log_problem(request.user, problem)}'
+                     f' [ошибка во время запуска кода] '
+                     f'payload {json.loads(request.body)} error {e}')
         return JsonResponse(json.dumps({'error': str(e)}), safe=False)
+    logger.info(f'(   ) {format_log_problem(request.user, problem)}'
+                f' [запуск кода]'
+                f' code {code} stdin {stdin}'
+                f' response {response.json()}')
     return JsonResponse(json.dumps(response.json()), safe=False)

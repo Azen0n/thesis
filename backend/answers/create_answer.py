@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import QuerySet
@@ -7,6 +9,7 @@ from algorithm.problem_selector.utils import get_last_theory_user_answers
 from algorithm.problem_selector.weakest_link import (check_weakest_link,
                                                      start_weakest_link_when_ready,
                                                      stop_weakest_link_when_practice_completed)
+from algorithm.utils import format_log_problem
 from config.settings import Constants
 from .models import Answer, CodeAnswer
 from courses.models import Problem, Semester, PRACTICE_TYPES, Type, THEORY_TYPES, Difficulty
@@ -18,6 +21,8 @@ DIFFICULTY_COEFFICIENT = {
     Difficulty.NORMAL.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_NORMAL,
     Difficulty.HARD.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_HARD,
 }
+
+logger = logging.getLogger(__name__)
 
 
 @transaction.atomic
@@ -44,6 +49,7 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
         semester=semester,
         topic=problem.main_topic
     ).first()
+    points = (progress.theory_points, progress.practice_points, progress.skill_level)
     if problem.type in THEORY_TYPES:
         last_answers = get_last_theory_user_answers(user, problem.main_topic)
         if len(last_answers) < Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
@@ -58,6 +64,14 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
     change_user_skill_level(progress, user_answer)
     if is_solved:
         add_points_for_problem(user, semester, problem, coefficient)
+    progress.refresh_from_db()
+    new_points = (progress.theory_points, progress.practice_points, progress.skill_level)
+    delta = [new_points[i] - points[i] for i in range(3)]
+    points_info = ' / '.join(f'{new_points[i]:.2f} ({"+" if delta[i] >= 0 else ""}{delta[i]})'
+                             for i in range(3))
+    logger.info(f'(   ) {format_log_problem(user, problem)}'
+                f' [ответ принят] is_solved {is_solved} time {time_elapsed_in_seconds}'
+                f' {points_info}')
     user_weakest_link_state = UserWeakestLinkState.objects.get(user=user, semester=semester)
     if user_weakest_link_state.state == WeakestLinkState.NONE and not is_weakest_link_done:
         start_weakest_link_when_ready(user, semester)

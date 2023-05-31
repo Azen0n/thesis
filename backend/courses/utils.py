@@ -29,17 +29,15 @@ def generate_join_code():
 def is_problem_answered(user: User, semester: Semester, problem: Problem) -> bool:
     """Возвращает True, если на задание дан ответ."""
     if problem.type in PRACTICE_TYPES:
-        return UserAnswer.objects.filter(
+        user_answers = UserAnswer.objects.filter(
             user=user,
             semester=semester,
-            problem=problem
-        ).count() >= Constants.MAX_NUMBER_OF_ATTEMPTS_PER_PRACTICE_PROBLEM or any(
-            UserAnswer.objects.filter(
-                user=user,
-                semester=semester,
-                problem=problem
-            ).values_list('is_solved', flat=True)
+            problem=problem,
+            is_solved__isnull=False
         )
+        is_practice_answered = user_answers.count() >= Constants.MAX_NUMBER_OF_ATTEMPTS_PER_PRACTICE_PROBLEM
+        is_solved = any(user_answers.values_list('is_solved', flat=True))
+        return is_practice_answered or is_solved
     else:
         return UserAnswer.objects.filter(
             user=user,

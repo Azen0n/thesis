@@ -16,17 +16,27 @@ function main() {
         let resultElement = document.getElementById('result');
 
         document.getElementById('answer_form').addEventListener('submit', function (e) {
-            resultElement.innerHTML = `Запрос обрабатывается...`;
-            validateAnswer(answerElement).then((data) => {
-                processAnswerResultData(data);
-            });
+            resultElement.innerHTML = 'Запрос обрабатывается...';
+            try {
+                validateAnswer(answerElement).then((data) => {
+                    processAnswerResultData(data);
+                });
+            } catch (error) {
+                console.log(error);
+                resultElement.innerHTML = 'Произошла ошибка.';
+            }
             e.preventDefault();
         });
         document.getElementById('run_stdin_button').addEventListener('click', function () {
-            resultElement.innerHTML = `Запрос обрабатывается...`;
-            runStdin(answerElement).then((data) => {
-                processRunStdinResultData(data);
-            });
+            resultElement.innerHTML = 'Запрос обрабатывается...';
+            try {
+                runStdin(answerElement).then((data) => {
+                    processRunStdinResultData(data);
+                });
+            } catch (error) {
+                console.log(error);
+                resultElement.innerHTML = 'Произошла ошибка.';
+            }
         });
     }
 }
@@ -123,8 +133,16 @@ function code(answerElement, correctAnswers) {
         <p>
             Особенности запуска кода:
             <ol>
-                <li>Все математические операции, кроме инкремента, приводятся к float.</li>
-                <li>Управляющие последовательности необходимо экранировать. Например, "\\n" → "\\\\n".</li>
+                <li>Если в задании присутствуют входные данные, программа должна считывать их с клавиатуры
+                 (например, <code>x = float(input())</code>). Каждый параметр во входных данных вводится с новой строки,
+                    если иного не указано в задании.</li>
+                <li>Если в задании явно не указан тип вводимых параметров, результат <code>input</code> приводится к 
+                 <code>float</code> (например, <code>x = float(input())</code>).</li>
+                <li>Все математические операции, кроме инкремента, приводятся к <code>float</code>.</li>
+                <li>Внутри <code>input()</code> не должно быть текста. <code>print()</code> должен
+                 выводить только то, что требуется в задании.</li>
+                <li>Управляющие последовательности необходимо экранировать. Например, <code>"\\n"</code> →
+                 <code>"\\\\n"</code>.</li>
             </ol>
         </p>
         <p>Код на Python (stdin → stdout)</p>
@@ -252,9 +270,10 @@ function processAnswerResultData(data) {
     if (coefficient === undefined) {
         coefficient = result['error'];
     } else {
+        coefficient = parseInt(coefficient) === 1 ? 'Верно' : 'Неверно';
+        coefficient += ` (${result['answer'][1]})`;
         if (result['is_answered'] === true) {
-            let submitButton = document.getElementById('submit_button');
-            submitButton.remove();
+            removeCodeControls();
         }
     }
     let resultElement = document.getElementById('result');
@@ -312,4 +331,12 @@ function encodeHtmlEntities(str) {
 
 function updateStopwatch() {
     stopwatchElement.innerHTML = parseInt(stopwatchElement.innerHTML) + 1;
+}
+
+function removeCodeControls() {
+    document.getElementById('submit_button').remove();
+    document.getElementById('run_stdin_button').remove();
+    document.getElementById('stdin_label_input').remove();
+    document.getElementById('skip').remove();
+    instance.setOption('readOnly', 'true');
 }

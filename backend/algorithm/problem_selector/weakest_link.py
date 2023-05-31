@@ -1,6 +1,10 @@
+import logging
+from collections import Counter
+from uuid import UUID
+
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Count
 
 from algorithm.models import (UserAnswer, WeakestLinkProblem, UserWeakestLinkState,
                               WeakestLinkState, WeakestLinkTopic, Progress)
@@ -8,13 +12,15 @@ from algorithm.problem_selector.points_maximization import get_problems_with_max
 from algorithm.problem_selector.topic_graph import load_topic_graph
 from algorithm.problem_selector.utils import get_last_practice_user_answers, filter_practice_problems
 from config.settings import Constants
-from courses.models import Problem, Topic, Semester, Difficulty
+from courses.models import Problem, Topic, Semester, Difficulty, PRACTICE_TYPES
 
 DIFFICULTY_COEFFICIENT = {
     Difficulty.EASY.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_EASY,
     Difficulty.NORMAL.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_NORMAL,
     Difficulty.HARD.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_HARD,
 }
+
+logger = logging.getLogger(__name__)
 
 
 def start_weakest_link_when_ready(user: User, semester: Semester) -> Problem | None:
@@ -24,11 +30,19 @@ def start_weakest_link_when_ready(user: User, semester: Semester) -> Problem | N
     if last_answer is None:
         return
     if not last_answer.is_solved:
+        if UserAnswer.objects.filter(
+                user=user,
+                semester=semester,
+                problem=last_answer.problem
+        ).count() < Constants.MAX_NUMBER_OF_ATTEMPTS_PER_PRACTICE_PROBLEM:
+            return
         problems = get_practice_problems_for_weakest_link(user, semester, last_answer.problem)
         if problems is not None:
             topics = get_topics_of_problems(*problems)
             topics = remove_completed_topics(user, semester, topics)
             if not topics:
+                logger.info(f'(   ) {user.username:<10}'
+                            f' [поиск проблемных тем] все темы закрыты')
                 return
             max_difficulty = min(problems[0].difficulty, problems[1].difficulty)
             fill_weakest_link_queue(user, semester, topics, Difficulty(max_difficulty))
@@ -45,17 +59,37 @@ def get_practice_problems_for_weakest_link(user: User, semester: Semester,
     main_topic_answers = UserAnswer.objects.filter(
         user=user,
         problem__main_topic=problem.main_topic,
-        semester=semester
+        semester=semester,
+        problem__type__in=PRACTICE_TYPES
     ).order_by('-created_at').exclude(problem=problem)
+    not_answered_problem_ids = get_not_answered_problem_ids(main_topic_answers)
+    main_topic_answers = main_topic_answers.exclude(problem__id__in=not_answered_problem_ids)
+    checked_problems = []
     number_of_solved_similar_problems = 0
     for answer in main_topic_answers:
+        if problem == answer.problem:
+            continue
         if is_problems_similar(problem, answer.problem):
+            if answer.problem in checked_problems:
+                continue
+            checked_problems.append(answer.problem)
+            if answer.is_solved is None:
+                return None
             if not answer.is_solved:
                 return problem, answer.problem
             number_of_solved_similar_problems += 1
             if number_of_solved_similar_problems == 2:
                 return None
     return None
+
+
+def get_not_answered_problem_ids(user_answers: QuerySet[UserAnswer]) -> list[UUID]:
+    """Возвращает id заданий, у которых не исчерпан лимит попыток."""
+    problems = user_answers.filter(is_solved=False).values_list('problem', flat=True)
+    counter = Counter(problems)
+    not_answered_problem_ids = [value for value, count in counter.items()
+                                if count < Constants.MAX_NUMBER_OF_ATTEMPTS_PER_PRACTICE_PROBLEM]
+    return not_answered_problem_ids
 
 
 def is_problems_similar(problem1: Problem, problem2: Problem) -> bool:
@@ -105,8 +139,12 @@ def fill_weakest_link_queue(user: User, semester: Semester,
     if final_topic_groups:
         add_topics_to_weakest_link_queue(user, semester, final_topic_groups)
         update_user_weakest_link_state(user, semester, WeakestLinkState.IN_PROGRESS)
+        logger.info(f'(   ) {user.username:<10} [поиск проблемных тем]'
+                    f' создано групп: {len(final_topic_groups)}')
     else:
-        raise NotImplementedError('Доступные задания с темами группы не найдены.')
+        logger.error(f'( ! ) {user.username:<10} [поиск проблемных тем]'
+                     f' задания с темами групп не найдены.')
+        raise NotImplementedError('Доступные задания с темами групп не найдены.')
 
 
 def add_topics_to_weakest_link_queue(user: User, semester: Semester,

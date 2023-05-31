@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.auth.models import User
 from django.db.models import QuerySet
 
@@ -11,6 +13,8 @@ POINTS_BY_DIFFICULTY = {
     Difficulty.HARD.value: Constants.POINTS_HARD,
 }
 
+logger = logging.getLogger(__name__)
+
 
 def get_problems_with_max_value(user: User, semester: Semester, problems: QuerySet[Problem]) -> list[Problem]:
     """Возвращает задания, отсортированные в порядке убывания их ценности."""
@@ -19,6 +23,10 @@ def get_problems_with_max_value(user: User, semester: Semester, problems: QueryS
         value = calculate_problem_value(user, semester, problem)
         problems_with_value.append((problem, value))
     problems_with_value.sort(key=lambda x: x[1])
+    for problem, value in problems_with_value[:15]:
+        logger.info(f'(   ) {user.username:<10} {problem.title:<25}'
+                    f' {problem.difficulty} {problem.time_to_solve_in_seconds:<6}'
+                    f' value={value}')
     return [problem for problem, _ in problems_with_value]
 
 
