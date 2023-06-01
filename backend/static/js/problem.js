@@ -16,28 +16,31 @@ function main() {
         let resultElement = document.getElementById('result');
 
         document.getElementById('answer_form').addEventListener('submit', function (e) {
-            resultElement.innerHTML = 'Запрос обрабатывается...';
-            try {
-                validateAnswer(answerElement).then((data) => {
+            resultElement.innerHTML = '<span class="iconify" data-icon="eos-icons:three-dots-loading" data-width="30"></span>';
+            validateAnswer(answerElement).then((data) => {
+                try {
                     processAnswerResultData(data);
-                });
-            } catch (error) {
-                console.log(error);
-                resultElement.innerHTML = 'Произошла ошибка.';
-            }
+                } catch (error) {
+                    console.log(error);
+                    resultElement.innerHTML = 'Произошла неизвестная ошибка.';
+                }
+            });
             e.preventDefault();
         });
-        document.getElementById('run_stdin_button').addEventListener('click', function () {
-            resultElement.innerHTML = 'Запрос обрабатывается...';
-            try {
+        let stdinBtn = document.getElementById('run_stdin_button');
+        if (stdinBtn !== null) {
+            stdinBtn.addEventListener('click', function () {
+                resultElement.innerHTML = '<span class="iconify" data-icon="eos-icons:three-dots-loading" data-width="30"></span>';
                 runStdin(answerElement).then((data) => {
-                    processRunStdinResultData(data);
+                    try {
+                        processRunStdinResultData(data);
+                    } catch (error) {
+                        console.log(error);
+                        resultElement.innerHTML = 'Произошла неизвестная ошибка.';
+                    }
                 });
-            } catch (error) {
-                console.log(error);
-                resultElement.innerHTML = 'Произошла ошибка.';
-            }
-        });
+            });
+        }
     }
 }
 
@@ -117,58 +120,98 @@ function fillInSingleBlank(answerElement, correctAnswers) {
     if (correctAnswers == null) {
         answerElement.innerHTML = `
         <p>Введите ответ</p>
-        <input type="text"></span>
+        <input type="text">
     `;
     } else {
         answerElement.innerHTML = `
         <p>Введите ответ</p>
-        <input type="text" value="${correctAnswers['is_correct'].join(', ')}" disabled></span>
+        <input type="text" value="${correctAnswers['is_correct'].join(', ')}" disabled>
     `;
     }
 }
 
 function code(answerElement, correctAnswers) {
     if (correctAnswers == null) {
-        answerElement.innerHTML = `
-        <p>
+        if (document.getElementById('run_stdin_button') !== null) {
+            renderCode(answerElement);
+        }
+    } else {
+        let tests = correctAnswers['is_correct'].split('\n');
+        answerElement.innerHTML = ``;
+        for (let i = 1; i < tests.length; i += 2) {
+            let stdin = tests[i - 1].split(',\r').filter(n => n);
+            answerElement.innerHTML += createTestElement(i, stdin, tests[i]);
+        }
+    }
+}
+
+function renderCode(answerElement) {
+    answerElement.innerHTML = `
+        <div class="d-flex justify-content-start align-items-center my-2">
+            <div class="bold_text">Код на Python (stdin → stdout)</div>
+            <a id="code_info_button" class="d-flex ms-2 align-items-center">
+                <span class="iconify" data-icon="material-symbols:info" style="color: #6c757d; cursor: pointer;"
+                      data-width="20" data-height="20"></span>
+            </a>
+        </div>
+        <div id="code_info" style="display: none;">
             Особенности запуска кода:
             <ol>
                 <li>Если в задании присутствуют входные данные, программа должна считывать их с клавиатуры
-                 (например, <code>x = float(input())</code>). Каждый параметр во входных данных вводится с новой строки,
+                 (например, <span class="code-font">x = float(input())</span>). Каждый параметр во входных данных вводится с новой строки,
                     если иного не указано в задании.</li>
-                <li>Если в задании явно не указан тип вводимых параметров, результат <code>input</code> приводится к 
-                 <code>float</code> (например, <code>x = float(input())</code>).</li>
-                <li>Все математические операции, кроме инкремента, приводятся к <code>float</code>.</li>
-                <li>Внутри <code>input()</code> не должно быть текста. <code>print()</code> должен
+                <li>Если в задании явно не указан тип вводимых параметров, результат <span class="code-font">input</span> приводится к 
+                 <span class="code-font">float</span> (например, <span class="code-font">x = float(input())</span>).</li>
+                <li>Все математические операции, кроме инкремента, приводятся к <span class="code-font">float</span>.</li>
+                <li>Внутри <span class="code-font">input()</span> не должно быть текста. <span class="code-font">print()</span> должен
                  выводить только то, что требуется в задании.</li>
-                <li>Управляющие последовательности необходимо экранировать. Например, <code>"\\n"</code> →
-                 <code>"\\\\n"</code>.</li>
+                <li>Управляющие последовательности необходимо экранировать. Например, <span class="code-font">"\\n"</span> →
+                 <span class="code-font">"\\\\n"</span>.</li>
             </ol>
-        </p>
-        <p>Код на Python (stdin → stdout)</p>
-        <div id="code" style="position: relative; border: 2px solid #ccc; width: 700px;"></div>
-        `;
-        let codeElement = document.getElementById('code');
-        instance = CodeMirror(codeElement, {
-            lineNumbers: true,
-            mode: "python",
-            indentUnit: 4,
-            textHeight: 18,
-        });
-        instance.setSize(700, 300);
-    } else {
-        let tests = correctAnswers['is_correct'].split('\n');
-        let stdinStdout = [];
-        for (let i = 1; i < tests.length; i += 2) {
-            let stdin = tests[i - 1].split(',\r').filter(n => n);
-            stdinStdout.push(`${stdin} → ${tests[i]}`);
+        </div>
+        <div id="code" style="position: relative; border: 2px solid #ccc; width: 100%;"></div>
+    `;
+    document.getElementById('code_info_button').addEventListener('click', function () {
+        let codeInfo = document.getElementById('code_info');
+        if (codeInfo.style.display === 'none') {
+            codeInfo.style.display = 'block';
+        } else {
+            codeInfo.style.display = 'none';
         }
-        answerElement.innerHTML = `
-        <p>Код на Python</p>
-        <p>Тесты:</p>
-        ${stdinStdout.join('<br>')}
-        `;
-    }
+    });
+    let codeElement = document.getElementById('code');
+    instance = CodeMirror(codeElement, {
+        lineNumbers: true,
+        mode: 'python',
+        indentUnit: 4,
+        textHeight: 18,
+    });
+}
+
+function createTestElement(testNumber, input, output) {
+    return `<div class="bold_text">Тест ${testNumber}</div>
+                <div class="container">
+                    <div class="row justify-content-start">
+                        <div class="col-3 px-0">
+                            <div class="container ps-0">
+                                <label class="bold_text" for="stdin_example${testNumber}">Ввод</label>
+                                <div id="stdin_example${testNumber}" class="code-font code-number"
+                                     style="width: 100px; height: 30px;">
+                                    ${input}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3 px-0">
+                            <div class="container ps-0">
+                                <label class="bold_text" for="stdout_example${testNumber}">Вывод</label>
+                                <div id="stdout_example${testNumber}" class="code-font code-number"
+                                     style="width: 100px; height: 30px;">
+                                    ${output}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
 }
 
 function getAnswerData() {
@@ -268,7 +311,10 @@ function processAnswerResultData(data) {
     console.log(result);
     let coefficient = result['coefficient'];
     if (coefficient === undefined) {
-        coefficient = result['error'];
+        coefficient = `<div class="d-flex align-items-center">
+            <span class="iconify me-2" data-icon="tabler:info-triangle-filled" style="color: #fbe106;" data-width="20"></span>
+            <div>${result['error']}</div>
+        </div>`;
     } else {
         coefficient = parseInt(coefficient) === 1 ? 'Верно' : 'Неверно';
         coefficient += ` (${result['answer'][1]})`;
@@ -286,16 +332,19 @@ function processRunStdinResultData(data) {
     console.log(result);
     if (result['code'] === undefined) {
         if (result['error'] === undefined) {
-            resultElement.innerHTML = 'Произошла ошибка';
+            resultElement.innerHTML = 'Произошла неизвестная ошибка';
         } else {
-            resultElement.innerHTML = `${result['error']}`;
+            resultElement.innerHTML = `<div class="d-flex align-items-center">
+            <span class="iconify me-2" data-icon="tabler:info-triangle-filled" style="color: #fbe106;" data-width="20"></span>
+            <div>${result['error']}</div>
+        </div>`;
         }
     } else {
         let info = '<br>';
         if (result['stderr'] === '') {
-            info += `Вывод:<br><pre>${encodeHtmlEntities(result['stdout'])}</pre>`;
+            info += `Вывод:<br><pre><div class="code-font code-number">${encodeHtmlEntities(result['stdout'])}</div></pre>`;
         } else {
-            info += `Ошибка:<br><pre>${encodeHtmlEntities(result['stderr'])}</pre>`;
+            info += `Ошибка:<br><pre><div class="code-font code-number">${encodeHtmlEntities(result['stderr'])}</div></pre>`;
         }
         resultElement.innerHTML = `${result['code']}${info}`;
     }
@@ -337,6 +386,6 @@ function removeCodeControls() {
     document.getElementById('submit_button').remove();
     document.getElementById('run_stdin_button').remove();
     document.getElementById('stdin_label_input').remove();
-    document.getElementById('skip').remove();
+    document.getElementById('skip_button').remove();
     instance.setOption('readOnly', 'true');
 }

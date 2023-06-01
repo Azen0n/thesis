@@ -1,17 +1,18 @@
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, redirect
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import authenticate, login, logout
+
+from accounts.forms import RegisterForm
 
 
 def register_view(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = RegisterForm(request.POST)
         if form.is_valid():
             form.save()
             return redirect('login')
     else:
-        form = UserCreationForm()
+        form = RegisterForm()
     context = {
         'form': form,
     }

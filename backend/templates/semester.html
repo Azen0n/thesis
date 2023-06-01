@@ -3,7 +3,8 @@
     {{ semester.course.title }}
 {% endblock %}
 {% block head_scripts %}
-
+    {% load static %}
+    <script type="text/javascript" src="{% static 'js/semester.js' %}"></script>
 {% endblock %}
 {% block content %}
     <div class="container white_block">
@@ -31,27 +32,52 @@
                 </div>
             </div>
         </div>
-        <div class="mt45 mx-2 row">
+        <div class="mt-2 mx-2 row">
             <h6> Описание </h6>
-            <p id="markdown-content">
+            <p id="markdown-content" class="mb-4">
                 {{ semester.course.description }}
             </p>
-            {% if not is_enrolled %}
-                <h6> Код присоединения </h6>
-                <div class="col-8 row align-items-center mb-3">
-                    <div class="col-2 px-2">
-                        <input type="text" class="form-control col-6">
-                    </div>
-                    <div class="col-7 offset-0 px-0">
-                        <button type="button" class="btn btn-primary col-6"> Записаться на курс</button>
-                    </div>
+            {% if is_semester_teacher %}
+                <div id="code" class="mb-2">
+                    {% if is_code_expired %}
+                        Срок действия кода истек.
+                    {% elif code == '' %}
+                        Код для присоединения отсутствует.
+                    {% else %}
+                        Код для присоединения: {{ code }}
+                    {% endif %}
                 </div>
+                <form action="{% url 'generate_semester_code' semester.pk %}" method="POST" id="generate_code_form"
+                      class="mb-4">
+                    {% csrf_token %}
+                    <div class="d-flex align-items-center">
+                        <button type="submit" class="btn btn-primary">Создать новый код</button>
+                        <label for="expiration_date" class="ms-3 me-2">Дата истечения</label>
+                        <input type="datetime-local" class="form-control" style="width: 220px;" id="expiration_date"
+                               value="{{ default_expiration_time }}"
+                               min="{{ min_expiration_time }}" max="{{ max_expiration_time }}">
+                    </div>
+                </form>
+            {% else %}
+                {% if not is_enrolled %}
+                    <form action="{% url 'enroll' semester.id %}" method="POST" id="join_code_form">
+                        {% csrf_token %}
+                        <h6>Код присоединения</h6>
+                        <div class="d-flex align-items-center mb-4">
+                            <input id="join_code" class="form-control" style="text-transform: uppercase; width: 80px;"
+                                   type="text" maxlength="5">
+                            <button type="submit" class="btn btn-primary ms-2">Записаться на курс</button>
+                        </div>
+                    </form>
+                {% else %}
+                    <p>Вы записаны на курс</p>
+                {% endif %}
             {% endif %}
         </div>
     </div>
     {% if is_enrolled %}
         {% regroup topics by module as modules %}
-        <div class="container white_block my-3">
+        <div class="container round-top-corners white_block my-3">
             <div class="accordion py-3" id="accordionModules">
                 {% for module in modules %}
                     <div class="accordion-item">
@@ -84,7 +110,7 @@
                                         </div>
                                         <div class="col-auto">
                                             <span class="iconify ms-3" data-icon="mdi:clock"></span>
-                                            <span class="bold_text">5 ч</span>
+                                            <span class="bold_text">{{ module.grouper.total_time }} ч</span>
                                         </div>
                                     </div>
                                 </div>
@@ -94,7 +120,7 @@
                                 <div class="container">
                                     {% for topic in module.list %}
                                         <div class="row space my-2">
-                                            <div class="col-12 g-0 row align-items-center">
+                                            <div class="col-12 g-0 row align-items-center px-1">
                                                 <div class="number-box col-auto mx-2">
                                                     <h5 class="number">
                                                         {{ forloop.counter }}

@@ -1,5 +1,30 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.content_row {
+    min-height: 100vh;
+    display: flex;
+    flex-wrap: nowrap;
+}
+
+.content_col {
+    flex-grow: 1;
+}
+
 .CodeMirror {
     line-height: 21px;
+}
+
+.code-font {
+    font-family: monospace;
+    font-size: 16px;
+}
+
+.code-number {
+    color: #116644;
 }
 
 .header {
@@ -11,20 +36,31 @@
     color: white;
 }
 
-#identificator {
-    text-align: right;
-}
-
 .btn {
     color: white;
 }
 
 .space {
     background-color: #f5f5f5;
+    border-radius: 0.5em;
+}
+
+.background {
+    background-color: #f5f5f5;
 }
 
 .white_block {
     background-color: white;
+    border-radius: 0 0 0.75em 0.75em;
+}
+
+.round-top-right-corner {
+    border-top-right-radius: 0.75em;
+}
+
+.round-top-corners {
+    border-top-right-radius: 0.75em;
+    border-top-left-radius: 0.75em;
 }
 
 .mt45 {
@@ -84,4 +120,37 @@ a {
 
 .accordion-item {
     border-radius: 5px;
+}
+
+.vertical-center {
+    margin: 0;
+    position: absolute;
+    top: 50%;
+    -ms-transform: translateY(-50%);
+    transform: translateY(-50%);
+}
+
+.nav-tabs .nav-link {
+    border: none;
+}
+
+.nav-tabs {
+    border-bottom: none;
+}
+
+.nav-item {
+    background-color: #D4D4D4;
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.nav-link {
+    color: #0D1B2A;
+}
+
+.nav-link:hover {
+    color: #0D1B2A;
+}
+
+.nav {
+    background-color: #F5F5F5;
 }

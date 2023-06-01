@@ -15,7 +15,7 @@ from .models import Semester, Topic, Problem, PRACTICE_TYPES, SemesterCode, THEO
 from answers.utils import get_answer_safe_data, get_correct_answers
 from .utils import (is_problem_topic_completed, generate_join_code,
                     get_annotated_semester_topics, get_semester_code_context,
-                    is_parent_topic_theory_low_reached)
+                    is_parent_topic_theory_low_reached, get_first_test)
 
 
 class SemesterListView(ListView):
@@ -92,14 +92,17 @@ class ProblemView(View):
             return render(request, 'error.html', {'message': 'Тест по теории не завершен.'})
         is_answered = UserAnswer.objects.filter(user=request.user, semester=semester, problem=problem).exists()
         is_topic_completed = is_problem_topic_completed(request.user, semester, problem)
+        test_example = get_first_test(problem)
         context = {
             'is_teacher': is_teacher,
             'semester': semester,
             'problem': problem,
             'is_answered': is_answered,
+            'is_practice_problem': problem.type in PRACTICE_TYPES,
             'answer': json.dumps(answer),
             'is_topic_completed': is_topic_completed,
             'correct_answers': json.dumps(get_correct_answers(problem.id)),
+            'test_example': test_example,
         }
         return render(request, 'problem.html', context)
 
