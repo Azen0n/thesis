@@ -76,43 +76,53 @@
                                 </button>
                             {% endif %}
                             <button id="submit_button" type="submit"
-                                    class="btn btn-primary col-auto me-auto ms-1 py-1">
+                                    class="btn btn-primary col-auto me-auto {% if is_practice_problem %}ms-2{% endif %} py-1">
                                     <span class="iconify" data-icon="fluent:send-24-filled" style="color: white;"
                                           data-width="23" data-height="28"></span>Отправить
                             </button>
-                            {% if is_adaptive %}
-                                <button id="skip_button" type="button" class="btn btn-secondary col-auto py-1">
-                                    <span class="iconify" data-icon="ri:skip-forward-mini-fill" style="color: white;"
-                                          data-width="28" data-height="28"></span>Пропустить
-                                </button>
-                            {% endif %}
                         </div>
                     {% else %}
-                        {% if is_topic_completed %}
+                        {% if is_topic_completed and not is_teacher %}
                             Набран максимальный балл.
                         {% endif %}
                     {% endif %}
                 </form>
+                {% if is_adaptive %}
+                    {% if type == 'theory' %}
+                        <form action="{% url 'next_theory_problem' semester.pk problem.main_topic.pk %}">
+                            <button id="next_problem_button" style="display: none;" type="submit"
+                                    class="btn btn-primary col-auto py-1 mt-3">
+                                Следующее задание
+                            </button>
+                        </form>
+                        <form id="skip" action="{% url 'skip_theory_problem' semester.pk problem.pk %}">
+                            <button id="skip_button" type="submit" class="btn btn-secondary col-auto py-1 mt-2">
+                                        <span class="iconify" data-icon="ri:skip-forward-mini-fill"
+                                              style="color: white;"
+                                              data-width="28" data-height="28"></span>
+                                Пропустить
+                            </button>
+                        </form>
+                    {% elif type == 'practice' %}
+                        <form action="{% url 'next_practice_problem' semester.pk %}">
+                            <button id="next_problem_button" style="display: none;" type="submit"
+                                    class="btn btn-primary col-auto py-1 mt-3">
+                                Следующее задание
+                            </button>
+                        </form>
+                        <form id="skip" action="{% url 'skip_practice_problem' semester.pk problem.pk %}">
+                            <button id="skip_button" type="submit" class="btn btn-secondary col-auto py-1 mt-2">
+                                        <span class="iconify" data-icon="ri:skip-forward-mini-fill"
+                                              style="color: white;"
+                                              data-width="28" data-height="28"></span>
+                                Пропустить
+                            </button>
+                        </form>
+                    {% endif %}
+                {% endif %}
             {% endif %}
             <div id="result" class="mt-2"></div>
             <div id="stopwatch" hidden>0</div>
-        </div>
-        <div>
-            {% if type == 'theory' %}
-                <form action="{% url 'next_theory_problem' semester.pk problem.main_topic.pk %}">
-                    <input type="submit" value="Следующее задание"/>
-                </form>
-                <form id="skip" action="{% url 'skip_theory_problem' semester.pk problem.pk %}">
-                    <input type="submit" value="Пропустить"/>
-                </form>
-            {% elif type == 'practice' %}
-                <form action="{% url 'next_practice_problem' semester.pk %}">
-                    <input type="submit" value="Следующее задание"/>
-                </form>
-                <form id="skip" action="{% url 'skip_practice_problem' semester.pk problem.pk %}">
-                    <input type="submit" value="Пропустить"/>
-                </form>
-            {% endif %}
         </div>
     </div>
 {% endblock %}

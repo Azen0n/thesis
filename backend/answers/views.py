@@ -4,6 +4,7 @@ from uuid import UUID
 from urllib.parse import quote
 
 import requests
+from django.db.models import QuerySet, Model
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
 from algorithm.utils import format_log_problem
@@ -25,10 +26,7 @@ def validate_answer(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -
         return json_response
     try:
         data = json.loads(request.body)
-        if not data.get('time_elapsed_in_seconds'):
-            time_elapsed_in_seconds = None
-        else:
-            time_elapsed_in_seconds = data.get('time_elapsed_in_seconds')
+        time_elapsed_in_seconds = data.get('time_elapsed_in_seconds')
         coefficient, answer = validate_answer_by_type(data)
         create_user_answer(request.user, semester, problem, coefficient, answer, time_elapsed_in_seconds)
         is_answered = is_problem_answered(request.user, semester, problem)
@@ -37,6 +35,10 @@ def validate_answer(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -
                      f' [ошибка во время проверки задания] '
                      f'payload {json.loads(request.body)} error {e}')
         return JsonResponse(json.dumps({'error': str(e)}), safe=False)
+    if type(answer) == QuerySet:
+        answer = [str(ans.id) for ans in answer]
+    if isinstance(answer, Model):
+        answer = str(answer.id)
     json_data = json.dumps({
         'coefficient': coefficient,
         'is_answered': is_answered,

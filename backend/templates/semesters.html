@@ -3,25 +3,29 @@
     Активные курсы
 {% endblock %}
 {% block content %}
-    <h2>Активные курсы</h2>
-    <ul>
-        {% for semester in semesters %}
-            <li>
-                <div>
-                    <h3>
+    {% for semester in semesters %}
+        <div class="container white_block">
+            <div class="p-3">
+                <h3 class="mb-2">Активные курсы</h3>
+                <div class="d-flex align-items-center space px-3 py-22 my-2">
+                    <div class="number-box">
+                        <h5 class="number">
+                            {{ forloop.counter }}
+                        </h5>
+                    </div>
+                    <div class="ms-3">
                         <a href="{% url 'semester' semester.pk %}">
                             {{ semester.course.title }}
                             <span title="{{ semester.started_at|date:"d.m.Y G:i:s" }}">
-                        ({{ semester.started_at|date:"j b" }}
-                        </span>
-                            –
+                                ({{ semester.started_at|date:"j b" }}
+                            </span> –
                             <span title="{{ semester.ended_at|date:"d.m.Y G:i:s" }}">
-                        {{ semester.ended_at|date:"j b Y" }})
-                        </span>
+                                {{ semester.ended_at|date:"j b Y" }})
+                            </span>
                         </a>
-                    </h3>
+                    </div>
                 </div>
-            </li>
-        {% endfor %}
-    </ul>
+            </div>
+        </div>
+    {% endfor %}
 {% endblock %}

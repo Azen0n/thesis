@@ -73,22 +73,26 @@ function multipleChoiceRadio(answer, answerElement, correctAnswers) {
     for (let option of answer['options']) {
         if (correctAnswers == null) {
             options.push(`
-            <input type="radio" id="${option['id']}" value="${option['text']}" name="option">
-            <label for="${option['id']}">${option['text']}</label><br>
+                <div class="form-check mt-2">
+                <input id="${option['id']}" class="form-check-input" type="radio" value="${option['text']}" name="option">
+                  <label class="form-check-label" for="${option['id']}">${marked.parseInline(option['text'])}</label>
+                </div>
         `);
         } else {
             let checked = option['id'] === correctAnswers['is_correct'] ? ' checked' : '';
             options.push(`
-            <input type="radio" id="${option['id']}" value="${option['text']}" name="option"${checked} disabled>
-            <label for="${option['id']}">${option['text']}</label><br>
-        `);
+                <div class="form-check mt-2">
+                <input id="${option['id']}" class="form-check-input" type="radio" value="${option['text']}" name="option"${checked} disabled>
+                  <label class="form-check-label" for="${option['id']}">${marked.parseInline(option['text'])}</label>
+                </div>
+            `);
         }
     }
     answerElement.innerHTML = `
-        <fieldset>
-            <legend>Выберите один правильный вариант</legend>
+        <div class="bold_text">Выберите один правильный вариант</div>
+        <div class="mb-3">
             ${options.join('\n')}
-        </fieldset>
+        </div>
     `;
 }
 
@@ -96,37 +100,45 @@ function multipleChoiceCheckbox(answer, answerElement, correctAnswers) {
     let options = [];
     for (let option of answer['options']) {
         if (correctAnswers == null) {
-            options.push(`
-            <input type="checkbox" id="${option['id']}" value="${option['text']}" name="option">
-            <label for="${option['id']}">${option['text']}</label><br>
-        `);
+            options.push(`            
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" value="${option['text']}" id="${option['id']}">
+                    <label class="form-check-label" for="${option['id']}">
+                        ${marked.parseInline(option['text'])}
+                    </label>
+                </div>
+            `);
         } else {
             let checked = correctAnswers['is_correct'].includes(option['id']) ? ' checked' : '';
             options.push(`
-            <input type="checkbox" id="${option['id']}" value="${option['text']}" name="option"${checked} disabled>
-            <label for="${option['id']}">${option['text']}</label><br>
-        `);
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" value="${option['text']}" id="${option['id']}"${checked} disabled>
+                    <label class="form-check-label" for="${option['id']}">
+                        ${marked.parseInline(option['text'])}
+                    </label>
+                </div>
+            `);
         }
     }
     answerElement.innerHTML = `
-        <fieldset>
-            <legend>Выберите несколько правильных вариантов</legend>
+        <div class="bold_text">Выберите несколько правильных вариантов</div>
+        <div class="mb-3">
             ${options.join('\n')}
-        </fieldset>
+        </div>
     `;
 }
 
 function fillInSingleBlank(answerElement, correctAnswers) {
     if (correctAnswers == null) {
         answerElement.innerHTML = `
-        <p>Введите ответ</p>
-        <input type="text">
-    `;
+            <div class="bold_text">Введите ответ</div>
+            <input class="form-control mb-3 mt-2" type="text">
+        `;
     } else {
         answerElement.innerHTML = `
-        <p>Введите ответ</p>
-        <input type="text" value="${correctAnswers['is_correct'].join(', ')}" disabled>
-    `;
+            <div class="bold_text">Введите ответ</div>
+            <input class="form-control mb-3 mt-2" type="text" value="${correctAnswers['is_correct'].join(', ')}" disabled>
+        `;
     }
 }
 
@@ -239,6 +251,7 @@ function getAnswerData() {
             console.error(`Unknown type '${answerType}'`);
     }
     data['time_elapsed_in_seconds'] = parseInt(stopwatchElement.innerHTML);
+    console.log(data);
     return data;
 }
 
@@ -317,9 +330,12 @@ function processAnswerResultData(data) {
         </div>`;
     } else {
         coefficient = parseInt(coefficient) === 1 ? 'Верно' : 'Неверно';
-        coefficient += ` (${result['answer'][1]})`;
+        if (result['answer'].constructor === Object) {
+            coefficient += ` (${result['answer'][1]})`;
+        }
         if (result['is_answered'] === true) {
             removeCodeControls();
+            showNextProblemButton();
         }
     }
     let resultElement = document.getElementById('result');
@@ -383,9 +399,19 @@ function updateStopwatch() {
 }
 
 function removeCodeControls() {
-    document.getElementById('submit_button').remove();
-    document.getElementById('run_stdin_button').remove();
-    document.getElementById('stdin_label_input').remove();
-    document.getElementById('skip_button').remove();
-    instance.setOption('readOnly', 'true');
+    for (let i = 0; i < 5; i++) {
+        try {
+            document.getElementById('submit_button').remove();
+            document.getElementById('run_stdin_button').remove();
+            document.getElementById('stdin_label_input').remove();
+            document.getElementById('skip_button').remove();
+            instance.setOption('readOnly', 'true');
+        } catch (e) {}
+    }
+}
+
+function showNextProblemButton() {
+    try {
+        document.getElementById('next_problem_button').style.display = 'block';
+    } catch (e) {}
 }

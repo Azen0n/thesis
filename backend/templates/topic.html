@@ -5,73 +5,78 @@
 {% block head_scripts %}
 {% endblock %}
 {% block content %}
-    <div class="container white_block py-4">
-        <div class="col-12 g-0 row align-items-center">
-            <div class="row">
-                <a href="{% url 'semester' semester.pk %}"
-                   class="col-auto text-truncate gray_text mb-2" style="max-width: 50%;">
+    <div class="white_block p-4">
+        <div class="align-items-center">
+            <div>
+                <div class="mb-2">
+                    <a href="{% url 'semester' semester.pk %}" class="text-truncate gray_text" style="max-width: 50%;">
                     <span class="gray_text small_text">
                         {{ semester.course.title }}
                     </span>
-                </a>
-                <h4 class="col-auto me-auto">
+                    </a>
+                </div>
+                <h4 class="me-auto">
                     {{ topic.title }}
                 </h4>
             </div>
             {% if not is_teacher %}
-                <div class="container row align-items-center">
-                <div class="col-7 align-items-center">
-                    <div class="container bold_text pb-2 ps-0">
-                        Прогресс
+                <div class="d-flex align-items-center">
+                    <div style="height: 48px; width: calc(100% - 250px);">
+                        <div class="bold_text">
+                            Прогресс
+                        </div>
+                        <div class="progress mt-1" role="progressbar">
+                            <div class="progress-bar" style="width: {{ progress_percent }}%; font-size: 1.18em;">
+                                {{ progress_percent }}%
+                            </div>
+                        </div>
                     </div>
-                    <div class="progress" role="progressbar">
-                        <div class="progress-bar" style="width: {{ progress_percent }}%">{{ progress_percent }}%</div>
-                    </div>
-                </div>
-                <div class="container col-auto align-items-center">
-                    <div class="row bold_text">
-                        <div>
+                    <div class="ms-3 me-auto">
+                        <div class="bold_text">
                             Теория
                         </div>
-                    </div>
-                    <span class="iconify" data-icon="bxs:star"></span>
-                    {{ theory_points|floatformat:2 }}
-                </div>
-                <div class="container col-auto align-items-center">
-                    <div class="row bold_text">
-                        Практика
-                    </div>
-                    <span class="iconify" data-icon="bxs:star"></span>
-                    {{ practice_points|floatformat:2 }}
-                </div>
-                <div class="container col-auto align-items-center">
-                    <div class="row bold_text">
-                        <div>
-                            Общий
+                        <div class="d-flex align-items-center">
+                            <span class="iconify" data-icon="bxs:star"></span>
+                            <span class="ms-1">{{ theory_points|floatformat:2 }}</span>
                         </div>
                     </div>
-                    <span class="iconify" data-icon="bxs:star"></span>
-                    {{ total_points|floatformat:2 }}
+                    <div class="ms-3 me-auto">
+                        <div class="bold_text">
+                            Практика
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="iconify" data-icon="bxs:star"></span>
+                            <span class="ms-1">{{ practice_points|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    <div class="ms-3 me-auto">
+                        <div class="bold_text">
+                            Общий
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="iconify" data-icon="bxs:star"></span>
+                            <span class="ms-1">{{ total_points|floatformat:2 }}</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
             {% endif %}
         </div>
     </div>
     <div class="py-2">
         <ul class="nav nav-tabs" id="myTab" role="tablist">
-            <li class="nav-item" role="presentation">
+            <li class="nav-item" style="max-width: 33%;" role="presentation">
                 <button class="nav-link active" id="attachment-tab" data-bs-toggle="tab" data-bs-target="#attachment"
-                        type="button" role="tab" aria-controls="attachment" aria-selected="true">Теоретический
-                    материал
+                        type="button" role="tab" aria-controls="attachment" aria-selected="true">
+                    <span>Теоретический материал</span>
                 </button>
             </li>
-            <li class="nav-item" role="presentation">
+            <li class="nav-item" style="max-width: 33%;" role="presentation">
                 <button class="nav-link" id="theory-tab" data-bs-toggle="tab" data-bs-target="#theory"
                         type="button" role="tab" aria-controls="theory" aria-selected="false">Теоретические
                     задания
                 </button>
             </li>
-            <li class="nav-item" role="presentation">
+            <li class="nav-item" style="max-width: 33%;" role="presentation">
                 <button class="nav-link" id="practice-tab" data-bs-toggle="tab" data-bs-target="#practice"
                         type="button" role="tab" aria-controls="practice" aria-selected="false">Практические
                     задания
@@ -80,8 +85,8 @@
         </ul>
         <div class="tab-content" id="myTabContent">
             <div class="tab-pane fade show active" id="attachment" role="tabpanel" aria-labelledby="attachment-tab">
-                <div class="container round-top-right-corner white_block py-2">
-                    <div class="container">
+                <div class="round-top-right-corner white_block py-2">
+                    <div class="px-3">
                         {% if not topic.attachment_set.all %}
                             <div class="my-3">
                                 Вложений нет
@@ -89,70 +94,78 @@
                         {% else %}
                             {% for attachment in topic.attachment_set.all %}
                                 <a href="{{ attachment.url }}" target="_blank">
-                                    <div class="row space my-2">
-                                        <div class="col-12 g-0 row align-items-center">
-                                            <div class="number-box col-auto mx-2">
+                                    <div class="space my-2">
+                                        <div class="d-flex align-items-center py-22">
+                                            <div class="number-box mx-2 px-3">
                                                 <h5 class="number">
                                                     {{ forloop.counter }}
                                                 </h5>
                                             </div>
-                                            <div class="col-auto  me-auto">
-                                                {{ attachment.name }}
+                                            <div class="me-auto text-truncate" style="max-width: calc(100% - 100px);">
+                                                <span>{{ attachment.name }}</span>
                                             </div>
-                                            <div class="col-auto align-items-center px-2">
-                                <span class="iconify" data-icon="mi:external-link" data-width="28"
-                                      data-height="28"></span>
-                                            </div>
+                                            <span class="iconify mx-2" data-icon="mi:external-link"
+                                                  data-width="28"></span>
                                         </div>
                                     </div>
                                 </a>
                             {% endfor %}
                         {% endif %}
-                    </div>
-                    {% if not is_teacher %}
-                        <div class="container row px-1 py-1 align-items-center">
-                            <form action="{% url 'next_theory_problem' semester.pk topic.pk %}" class="col-auto pe-3">
-                                <button type="submit" class="btn btn-primary">
+                        {% if not is_teacher %}
+                            <div class="d-flex px-1 py-1 align-items-center">
+                                <form action="{% url 'next_theory_problem' semester.pk topic.pk %}" class="pe-3">
+                                    <button type="submit" class="btn btn-primary">
                                 <span class="iconify" data-icon="fe:play" style="color: white;" data-width="28"
                                       data-height="28"></span>
-                                    Следующее теоретическое задание
-                                </button>
-                            </form>
-                            <div class="container col-auto row align-items-center ms-2">
-                        <span class="iconify col-auto" data-icon="bi:exclamation-triangle-fill" style="color: gray;"
-                              data-width="19" data-height="19"></span>
-                                <p class="col-auto px-0 gray_text pt-3 small_text">
-                                    Завершите тест по теории,<br>чтобы открыть доступ к практическим заданиям
-                                </p>
+                                        Следующее теоретическое задание
+                                    </button>
+                                </form>
+                                <div class="d-flex align-items-center ms-2">
+                                <span class="iconify" data-icon="bi:exclamation-triangle-fill" style="color: gray;"
+                                      data-width="19" data-height="19"></span>
+                                    <p class="mx-3 gray_text pt-3 small_text">
+                                        Завершите тест по теории,<br>чтобы открыть доступ к практическим заданиям
+                                    </p>
+                                </div>
                             </div>
-                        </div>
-                    {% endif %}
+                        {% endif %}
+                    </div>
                 </div>
             </div>
             <div class="tab-pane fade" id="theory" role="tabpanel" aria-labelledby="theory-tab">
-                <div class="container round-top-right-corner white_block py-2">
-                    <div class="container">
+                <div class="round-top-right-corner white_block py-2">
+                    <div class="px-3">
                         {% if not theory_problems %}
-                            <div class="my-3">
+                            <div class="m-3">
                                 Заданий нет
                             </div>
                         {% else %}
+                            {% if not is_teacher %}
+                                <div class="d-flex align-items-center mx-3 mt-3 mb-4">
+                                <span class="iconify me-2" data-icon="material-symbols:tips-and-updates"
+                                      data-width="24"></span>
+                                    <a class="d-flex align-items-center ms-1"
+                                       href="{% url 'next_theory_problem' semester.pk topic.pk %}">
+                                        <span>Перейти к адаптивному режиму</span>
+                                        <span class="iconify ms-2" data-icon="tabler:arrow-right"
+                                              data-width="20"></span>
+                                    </a>
+                                </div>
+                            {% endif %}
                             {% for problem in theory_problems %}
                                 <a href="{% url 'problem' semester.pk problem.pk %}">
-                                    <div class="row space my-2">
-                                        <div class="col-12 g-0 row align-items-center">
-                                            <div class="number-box col-auto mx-2">
+                                    <div class="space my-2">
+                                        <div class="d-flex align-items-center py-22">
+                                            <div class="number-box mx-2 px-3">
                                                 <h5 class="number">
                                                     {{ forloop.counter }}
                                                 </h5>
                                             </div>
-                                            <div class="col-auto me-auto">
-                            <span class="black_text">
-                                {{ problem.title }}
-                            </span>
+                                            <div class="me-auto text-truncate" style="max-width: calc(100% - 120px);">
+                                                <span>{{ problem.title }}</span>
                                             </div>
                                             {% if problem.difficulty == 1 %}
-                                                <div class="col-auto mx-4 align-items-center" title="Сложность">
+                                                <div class="d-flex mx-2 align-items-center" title="Сложность">
                                                     <span class="iconify" data-icon="ph:star-fill"
                                                           data-width="20"></span>
                                                     <span class="iconify" data-icon="ph:star-bold"
@@ -161,7 +174,7 @@
                                                           data-width="20"></span>
                                                 </div>
                                             {% elif problem.difficulty == 2 %}
-                                                <div class="col-auto mx-4 align-items-center" title="Сложность">
+                                                <div class="d-flex mx-2 align-items-center" title="Сложность">
                                                     <span class="iconify" data-icon="ph:star-fill"
                                                           data-width="20"></span>
                                                     <span class="iconify" data-icon="ph:star-fill"
@@ -170,7 +183,7 @@
                                                           data-width="20"></span>
                                                 </div>
                                             {% elif problem.difficulty == 3 %}
-                                                <div class="col-auto mx-4 align-items-center" title="Сложность">
+                                                <div class="d-flex mx-2 align-items-center" title="Сложность">
                                                     <span class="iconify" data-icon="ph:star-fill"
                                                           data-width="20"></span>
                                                     <span class="iconify" data-icon="ph:star-fill"
@@ -188,29 +201,39 @@
                 </div>
             </div>
             <div class="tab-pane fade" id="practice" role="tabpanel" aria-labelledby="practice-tab">
-                <div class="container round-top-right-corner white_block py-2">
-                    <div class="container">
+                <div class="round-top-right-corner white_block py-2">
+                    <div class="px-3">
                         {% if not practice_problems %}
-                            <div class="my-3">
+                            <div class="m-3">
                                 Заданий нет
                             </div>
                         {% else %}
+                            {% if not is_teacher %}
+                                <div class="d-flex align-items-center mx-3 mt-3 mb-4">
+                                    <span class="iconify me-2" data-icon="material-symbols:tips-and-updates"
+                                          data-width="24"></span>
+                                    <a class="d-flex align-items-center ms-1"
+                                       href="{% url 'next_practice_problem' semester.pk %}">
+                                        <span>Перейти к адаптивному режиму</span>
+                                        <span class="iconify ms-2" data-icon="tabler:arrow-right"
+                                              data-width="20"></span>
+                                    </a>
+                                </div>
+                            {% endif %}
                             {% for problem in practice_problems %}
                                 <a href="{% url 'problem' semester.pk problem.pk %}">
-                                    <div class="row space my-2">
-                                        <div class="col-12 g-0 row align-items-center">
-                                            <div class="number-box col-auto mx-2">
+                                    <div class="space my-2">
+                                        <div class="d-flex align-items-center py-22">
+                                            <div class="number-box mx-2 px-3">
                                                 <h5 class="number">
                                                     {{ forloop.counter }}
                                                 </h5>
                                             </div>
-                                            <div class="col-auto me-auto">
-                            <span class="black_text">
-                                {{ problem.title }}
-                            </span>
+                                            <div class="me-auto text-truncate" style="max-width: calc(100% - 120px);">
+                                                <span>{{ problem.title }}</span>
                                             </div>
                                             {% if problem.difficulty == 1 %}
-                                                <div class="col-auto mx-4 align-items-center" title="Сложность">
+                                                <div class="d-flex mx-2 align-items-center" title="Сложность">
                                                     <span class="iconify" data-icon="ph:star-fill"
                                                           data-width="20"></span>
                                                     <span class="iconify" data-icon="ph:star-bold"
@@ -219,7 +242,7 @@
                                                           data-width="20"></span>
                                                 </div>
                                             {% elif problem.difficulty == 2 %}
-                                                <div class="col-auto mx-4 align-items-center" title="Сложность">
+                                                <div class="d-flex mx-2 align-items-center" title="Сложность">
                                                     <span class="iconify" data-icon="ph:star-fill"
                                                           data-width="20"></span>
                                                     <span class="iconify" data-icon="ph:star-fill"
@@ -228,7 +251,7 @@
                                                           data-width="20"></span>
                                                 </div>
                                             {% elif problem.difficulty == 3 %}
-                                                <div class="col-auto mx-4 align-items-center" title="Сложность">
+                                                <div class="d-flex mx-2 align-items-center" title="Сложность">
                                                     <span class="iconify" data-icon="ph:star-fill"
                                                           data-width="20"></span>
                                                     <span class="iconify" data-icon="ph:star-fill"
@@ -245,7 +268,6 @@
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 {% endblock %}
