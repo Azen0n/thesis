@@ -30,12 +30,13 @@
         <div class="col-xxl-3 col-xl-2 col-lg-2 col-sm-1 d-none d-sm-none d-md-block"></div>
         <div class="col-xxl-6 col-xl-8 col-lg-8 col-sm-10 col-12">
             <div class="d-flex align-items-center">
-                <a class="white-text" href="{% url 'semesters' %}">Адаптивная обучающая система™</a>
+                <a class="white-text me-auto" href="{% url 'semesters' %}">Адаптивная обучающая система™</a>
                 {% if user.is_authenticated %}
-                    <a type="button" class="btn btn-primary ms-auto" href="{% url 'logout' %}"
+                    <span class="white-text me-2">{{ user.username }}</span>
+                    <a type="button" class="btn btn-primary" href="{% url 'logout' %}"
                        title="{{ user.username }}">Выйти</a>
                 {% else %}
-                    <a type="button" class="btn btn-primary ms-auto" href="{% url 'login' %}">Войти</a>
+                    <a type="button" class="btn btn-primary" href="{% url 'login' %}">Войти</a>
                 {% endif %}
             </div>
         </div>

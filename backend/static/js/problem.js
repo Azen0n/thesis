@@ -251,7 +251,6 @@ function getAnswerData() {
             console.error(`Unknown type '${answerType}'`);
     }
     data['time_elapsed_in_seconds'] = parseInt(stopwatchElement.innerHTML);
-    console.log(data);
     return data;
 }
 
@@ -330,11 +329,11 @@ function processAnswerResultData(data) {
         </div>`;
     } else {
         coefficient = parseInt(coefficient) === 1 ? 'Верно' : 'Неверно';
-        if (result['answer'].constructor === Object) {
+        if (Array.isArray(result['answer'])) {
             coefficient += ` (${result['answer'][1]})`;
         }
         if (result['is_answered'] === true) {
-            removeCodeControls();
+            removeControls();
             showNextProblemButton();
         }
     }
@@ -398,16 +397,16 @@ function updateStopwatch() {
     stopwatchElement.innerHTML = parseInt(stopwatchElement.innerHTML) + 1;
 }
 
-function removeCodeControls() {
-    for (let i = 0; i < 5; i++) {
+function removeControls() {
+    let controls = ['submit_button','run_stdin_button','stdin_label_input','skip_button'];
+    for (let i = 0; i < 4; i++) {
         try {
-            document.getElementById('submit_button').remove();
-            document.getElementById('run_stdin_button').remove();
-            document.getElementById('stdin_label_input').remove();
-            document.getElementById('skip_button').remove();
-            instance.setOption('readOnly', 'true');
+            document.getElementById(controls[i]).remove();
         } catch (e) {}
     }
+    try {
+        instance.setOption('readOnly', 'true');
+    } catch (e) {}
 }
 
 function showNextProblemButton() {
