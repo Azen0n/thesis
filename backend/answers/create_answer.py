@@ -52,14 +52,12 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
     points = (progress.theory_points, progress.practice_points, progress.skill_level)
     if problem.type in THEORY_TYPES:
         last_answers = get_last_theory_user_answers(user, problem.main_topic)
-        if len(last_answers) < Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
+        if len(last_answers) <= Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
             if is_solved:
                 add_placement_points_for_problem(progress, user_answer)
-            return
-        if len(last_answers) == Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
-            if is_solved:
-                add_placement_points_for_problem(progress, user_answer)
-            placement_change_skill_level(progress, last_answers)
+            if len(last_answers) == Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
+                progress.refresh_from_db()
+                placement_change_skill_level(progress, last_answers)
             return
     change_user_skill_level(progress, user_answer)
     if is_solved:
@@ -130,5 +128,8 @@ def change_user_skill_level(progress: Progress, user_answer: UserAnswer):
     if user_answer.is_solved:
         progress.skill_level += difficulty_coefficient
     else:
-        progress.skill_level -= difficulty_coefficient
+        if progress.skill_level - difficulty_coefficient < Constants.ALGORITHM_SKILL_LEVEL_LOWER_BOUND:
+            progress.skill_level = Constants.ALGORITHM_SKILL_LEVEL_LOWER_BOUND
+        else:
+            progress.skill_level -= difficulty_coefficient
     progress.save()

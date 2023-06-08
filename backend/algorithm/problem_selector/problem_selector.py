@@ -2,14 +2,14 @@ import logging
 
 from django.contrib.auth.models import User
 
-from algorithm.models import (Progress, UserWeakestLinkState, WeakestLinkState,
-                              WeakestLinkProblem)
+from algorithm.models import Progress, UserWeakestLinkState, WeakestLinkState
 from config.settings import Constants
-from courses.models import Problem, Semester
+from courses.models import Problem, Semester, Difficulty
 from .points_maximization import get_problems_with_max_value
 from .utils import (filter_practice_problems, filter_theory_problems,
-                    get_last_theory_user_answers, get_suitable_problem_difficulty)
-from ..utils import format_log_problem, truncate_string
+                    get_last_theory_user_answers, filter_placement_problems,
+                    filter_theory_problems_increase_difficulty)
+from .weakest_link import next_weakest_link_problem
 
 logger = logging.getLogger(__name__)
 
@@ -32,40 +32,37 @@ def next_theory_problem(progress: Progress) -> Problem:
     problems = get_problems_with_max_value(progress.user, progress.semester, problems)
     last_answers = get_last_theory_user_answers(progress.user, progress.topic)
     additional_log_info = ''
-    try:
-        if len(last_answers) < Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
-            difficulty = get_suitable_problem_difficulty(progress.skill_level)
-            problems = list(filter(lambda x: x.difficulty <= difficulty, problems))
-            problem = sorted(problems, key=lambda x: x.difficulty, reverse=True)[0]
-            additional_log_info = (f' [калибровка ({len(last_answers)}/'
+    if len(last_answers) < Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
+        additional_log_info = (f' [калибровка ({len(last_answers)}/'
                                    f'{Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS})]')
-        else:
-            problem = problems[0]
-    except IndexError:
+        problems = filter_placement_problems(progress, problems)
+    if not problems:
+        problems = filter_theory_problems_increase_difficulty(progress)
+    if not problems or problems is None:
         logger.error(f'( ! ) {progress.user.username:<10}'
                      f' [доступных теоретических заданий нет]{additional_log_info}')
         raise NotImplementedError('Доступных теоретических заданий нет.')
     logger.info(f'(   ) {format_log_problem(progress.user, problem)}{additional_log_info}')
-    return problem
+    return problems[0]
 
 
 def next_practice_problem(user: User, semester: Semester) -> Problem:
     """Возвращает следующее практическое задание по текущей теме студента."""
     user_weakest_link_state = UserWeakestLinkState.objects.get(user=user, semester=semester).state
     if user_weakest_link_state == WeakestLinkState.IN_PROGRESS:
-        weakest_link_problem = WeakestLinkProblem.objects.filter(
-            user=user,
-            semester=semester,
-            is_solved__isnull=True
-        ).order_by('group_number').first()
-        logger.info(f'(   ) {format_log_problem(user, weakest_link_problem.problem)}'
-                    f' [поиск проблемных тем (группа {weakest_link_problem.group_number})]')
-        return weakest_link_problem.problem
-    problems = filter_practice_problems(user, semester).order_by('title')
-    try:
-        problem = get_problems_with_max_value(user, semester, problems)[0]
-    except IndexError:
+        problem = next_weakest_link_problem(user, semester)
+        if problem is not None:
+            logger.info(f'(   ) {format_log_problem(user, problem)}'
+                    f' [поиск проблемных тем]')
+            return problem
+    problems = filter_practice_problems(user, semester)
+    if not problems:
+        problems = filter_practice_problems(user, semester, max_difficulty=Difficulty.NORMAL)
+    if not problems:
+        problems = filter_practice_problems(user, semester, max_difficulty=Difficulty.HARD)
+    problems = get_problems_with_max_value(user, semester, problems)
+    if not problems:
         logger.error(f'( ! ) {user.username:<10} [доступных практических заданий нет]')
         raise NotImplementedError('Доступных практических заданий нет.')
     logger.info(f'(   ) {format_log_problem(user, problem)}')
-    return problem
+    return problems[0]

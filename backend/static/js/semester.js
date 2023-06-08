@@ -4,6 +4,7 @@ function main() {
     addGenerateCodeFormListener();
     addJoinCodeFormListener();
     addNeonGenesisAccordion();
+    addChangeTargetPointsListener();
 }
 
 function addJoinCodeFormListener() {
@@ -106,4 +107,23 @@ function addToModuleOnClickEvent(module, moduleContents, moduleDescription, modu
             }
         }
     });
+
+function addChangeTargetPointsListener() {
+    document.getElementById('target_points_form').addEventListener('submit', function (e) {
+        changeTargetPoints().then(response => {});
+        e.preventDefault();
+    });
+}
+
+async function changeTargetPoints() {
+    const csrf = document.getElementsByName('csrfmiddlewaretoken')[0].value;
+    let response = await fetch('/change_target_points/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf
+        },
+        body: JSON.stringify({'points': document.getElementById('target_points').value})
+    });
+    return response.json();
 }
