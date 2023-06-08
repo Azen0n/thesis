@@ -10,6 +10,7 @@ from .utils import (filter_practice_problems, filter_theory_problems,
                     get_last_theory_user_answers, filter_placement_problems,
                     filter_theory_problems_increase_difficulty)
 from .weakest_link import next_weakest_link_problem
+from ..utils import truncate_string, format_log_problem
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ def next_theory_problem(progress: Progress) -> Problem:
         logger.error(f'( ! ) {progress.user.username:<10}'
                      f' [доступных теоретических заданий нет]{additional_log_info}')
         raise NotImplementedError('Доступных теоретических заданий нет.')
-    logger.info(f'(   ) {format_log_problem(progress.user, problem)}{additional_log_info}')
+    logger.info(f'(   ) {format_log_problem(progress.user, problems[0])}{additional_log_info}')
     return problems[0]
 
 
@@ -64,5 +65,5 @@ def next_practice_problem(user: User, semester: Semester) -> Problem:
     if not problems:
         logger.error(f'( ! ) {user.username:<10} [доступных практических заданий нет]')
         raise NotImplementedError('Доступных практических заданий нет.')
-    logger.info(f'(   ) {format_log_problem(user, problem)}')
+    logger.info(f'(   ) {format_log_problem(user, problems[0])}')
     return problems[0]

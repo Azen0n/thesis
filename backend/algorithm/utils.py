@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 
-from algorithm.models import (Progress, UserWeakestLinkState, UserAnswer
+from algorithm.models import (Progress, UserWeakestLinkState, UserAnswer,
                               WeakestLinkState, UserTargetPoints)
 from courses.models import Semester, Problem
 from courses.utils import is_problem_answered

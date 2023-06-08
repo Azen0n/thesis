@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 import json
 from uuid import UUID
@@ -41,6 +42,7 @@ class SemesterView(View):
             'semester': semester,
             'topics': topics,
             'is_semester_teacher': request.user in semester.teachers.all(),
+            'target_points_options': TargetPoints.choices,
             'is_enrolled': request.user in semester.students.all(),
         }
         context.update(get_semester_code_context(semester))
@@ -154,18 +156,26 @@ def debug_pattern_simulator(request: HttpRequest):
     3. «Отставание»
     4. «Излишний перфекционизм»
     """
-    target_points_list: list[TargetPoints] = [TargetPoints.LOW, TargetPoints.MEDIUM, TargetPoints.HIGH]
+    target_points_list: list[TargetPoints] = [
+        TargetPoints.LOW,
+        TargetPoints.MEDIUM,
+        TargetPoints.HIGH
+    ]
     pattern_generators = [
         motivation_decay_generator,
         motivation_spikes_generator,
         falling_behind_generator,
         excessive_perfectionism_generator
     ]
+    times = []
     for target_points in target_points_list:
         for generator in pattern_generators:
+            s = time.time()
             pattern = Pattern(target_points=target_points,
                               style=Style.THEORY_FIRST,
                               generator=generator)
             simulator = PatternSimulator(pattern)
             simulator.run()
-    return JsonResponse(json.dumps({'status': '200'}), safe=False)
+            e = time.time()
+            times.append((e - s) / 60)
+    return JsonResponse(json.dumps({'status': '200', 'times': times}), safe=False)

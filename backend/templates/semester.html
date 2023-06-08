@@ -77,19 +77,26 @@
                         </div>
                     </form>
                 {% else %}
-                    <form action="" id="target_points_form">
-                        {% csrf_token %}
-                        <label for="target_points">Выберите желаемую оценку:</label>
-                        <select id="target_points">
-                            {% for points, mark in target_points_options %}
-                                <option value="{{ points }}"
-                                        {% if user.usertargetpoints.target_points == points %}selected{% endif %}>
-                                    {{ mark }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                        <button type="submit">Изменить</button>
-                    </form>
+                    <div class="d-flex align-items-center mb-2">
+                    <div class="d-flex align-items-center" title="Алгоритм будет подбирать задания таким образом, чтобы достичь заданного уровня оценки для каждой темы">
+                        <label class="me-1" for="target_points">
+                            Минимальная цель
+                        </label>
+                        <span class="iconify me-2" data-icon="mingcute:question-fill" style="color: gray;"
+                              data-width="20"></span>
+                    </div>
+                        <form action="">
+                            {% csrf_token %}
+                            <select class="form-select" id="target_points" style="width: 70px;">
+                                {% for points, mark in target_points_options %}
+                                    <option value="{{ points }}"
+                                            {% if user.usertargetpoints.target_points == points %}selected{% endif %}>
+                                        {{ mark }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                    </div>
                     <form action="{% url 'next_practice_problem' semester.pk %}">
                         <input class="btn btn-primary mb-4" type="submit" value="Следующее практическое задание"/>
                     </form>

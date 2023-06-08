@@ -148,11 +148,13 @@ def generate_time_to_solve_in_seconds(types: list[Type], difficulty: Difficulty,
                                       number_of_sub_topics: int) -> float:
     """Возвращает количество секунд на решение задания."""
     if set(types).issubset(set(THEORY_TYPES)):
-        time_to_solve_in_seconds = random.randint(1, 5) + (
-                100 * difficulty.value - 100) + 10 * (1 + number_of_sub_topics)
+        time_to_solve_in_seconds = random.randint(10, 50) + (
+                60 * difficulty.value - 60) + 8 * (1 + number_of_sub_topics)
     elif set(types).issubset(set(PRACTICE_TYPES)):
-        time_to_solve_in_seconds = random.randint(1, 5) * 5 + (
-                500 * difficulty.value - 200) + 10 * (1 + number_of_sub_topics)
+        time_to_solve_in_seconds = random.randint(
+            3 * difficulty.value,
+            5 * difficulty.value
+        ) * 20 + (180 * difficulty.value - 80) + 30 * (1 + number_of_sub_topics)
     else:
         raise ValueError(f'Неизвестные типы заданий: {", ".join(types)}.')
     return time_to_solve_in_seconds

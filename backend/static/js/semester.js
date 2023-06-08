@@ -107,15 +107,17 @@ function addToModuleOnClickEvent(module, moduleContents, moduleDescription, modu
             }
         }
     });
+}
 
 function addChangeTargetPointsListener() {
-    document.getElementById('target_points_form').addEventListener('submit', function (e) {
-        changeTargetPoints().then(response => {});
+    let select = document.getElementById('target_points');
+    select.addEventListener('change', function (e) {
+        changeTargetPoints(select.value).then(response => {});
         e.preventDefault();
     });
 }
 
-async function changeTargetPoints() {
+async function changeTargetPoints(targetPoints) {
     const csrf = document.getElementsByName('csrfmiddlewaretoken')[0].value;
     let response = await fetch('/change_target_points/', {
         method: 'POST',
@@ -123,7 +125,7 @@ async function changeTargetPoints() {
             'Content-Type': 'application/json',
             'X-CSRFToken': csrf
         },
-        body: JSON.stringify({'points': document.getElementById('target_points').value})
+        body: JSON.stringify({'points': targetPoints})
     });
     return response.json();
 }
