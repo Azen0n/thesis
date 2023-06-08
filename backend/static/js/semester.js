@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', main, false);
 function main() {
     addGenerateCodeFormListener();
     addJoinCodeFormListener();
+    addNeonGenesisAccordion();
     addChangeTargetPointsListener();
 }
 
@@ -16,8 +17,7 @@ function addJoinCodeFormListener() {
                         if (result['error'] !== undefined) {
                             let errorElement = document.getElementById('error');
                             errorElement.innerText = result['error'];
-                        }
-                        else if (result['status'] === '200') {
+                        } else if (result['status'] === '200') {
                             window.location.replace(window.location.href);
                         }
                     }
@@ -38,8 +38,7 @@ function addGenerateCodeFormListener() {
                         let codeElement = document.getElementById('code');
                         if (!result['is_code_expired']) {
                             codeElement.innerText = `Код для присоединения: ${result['code']}`;
-                        }
-                        else {
+                        } else {
                             codeElement.innerText = `Срок действия кода истек.`;
                         }
                     }
@@ -75,6 +74,39 @@ async function enroll() {
     });
     return response.json();
 }
+
+function addNeonGenesisAccordion() {
+    let moduleIndex = 1;
+    let module = document.getElementById(`module${moduleIndex}`);
+    while (module !== null) {
+        let moduleContents = document.getElementById(`module_contents${moduleIndex}`);
+        let moduleDescription = document.getElementById(`module_description${moduleIndex}`);
+        let moduleTopics = document.getElementById(`module_topics${moduleIndex}`);
+        moduleIndex++;
+        let isLast = document.getElementById(`module${moduleIndex}`) === null;
+        addToModuleOnClickEvent(module, moduleContents, moduleDescription, moduleTopics, isLast);
+        module = document.getElementById(`module${moduleIndex}`);
+    }
+}
+
+function addToModuleOnClickEvent(module, moduleContents, moduleDescription, moduleTopics, isLast) {
+    module.addEventListener('click', function () {
+        if (moduleContents.style.display === 'none') {
+            moduleContents.style.display = 'block';
+            module.classList.add('sharpen-bottom-corners');
+            moduleDescription.classList.add('sharpen-top-corners');
+            if (!isLast) {
+                moduleTopics.classList.add('mb-5');
+            }
+        } else {
+            moduleContents.style.display = 'none';
+            module.classList.remove('sharpen-bottom-corners');
+            moduleDescription.classList.remove('sharpen-top-corners');
+            if (!isLast) {
+                moduleTopics.classList.remove('mb-5');
+            }
+        }
+    });
 
 function addChangeTargetPointsListener() {
     document.getElementById('target_points_form').addEventListener('submit', function (e) {

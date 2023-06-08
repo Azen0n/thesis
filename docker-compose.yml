@@ -16,11 +16,13 @@ services:
     container_name: backend
     build:
       context: ./backend
-    command: python manage.py runserver 0.0.0.0:${INT_DJANGO_PORT}
+    command: gunicorn --bind 0.0.0.0:${INT_DJANGO_PORT} config.wsgi
     volumes:
       - ./backend:/code
     ports:
       - "${EXT_DJANGO_PORT}:${INT_DJANGO_PORT}"
+    expose:
+      - "${EXT_DJANGO_PORT}"
     environment:
       - POSTGRES_NAME=${POSTGRES_NAME}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -28,6 +30,9 @@ services:
       - POSTGRES_PORT=${INT_POSTGRES_PORT}
       - POSTGRES_HOST=db
       - SECRET_KEY=${SECRET_KEY}
+      - SANDBOX_API_URL=${SANDBOX_API_URL}
+      - SANDBOX_API_HEADER=${SANDBOX_API_HEADER}
+      - SANDBOX_API_TOKEN=${SANDBOX_API_TOKEN}
       - DEBUG=${DEBUG}
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE}
     depends_on:

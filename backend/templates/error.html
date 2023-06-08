@@ -3,5 +3,10 @@
     Ошибка
 {% endblock %}
 {% block content %}
-    {{ message }}
+    <div class="container white_block">
+        <div class="p-3">
+            <h3 class="mb-2">Ошибка</h3>
+            <p>{{ message }}</p>
+        </div>
+    </div>
 {% endblock %}

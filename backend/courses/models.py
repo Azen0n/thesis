@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import os
 import uuid
 
 from django.contrib.auth.models import User
@@ -6,7 +8,7 @@ from django.db import models
 from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
 
-from config.settings import Constants
+from config.settings import Constants, STATICFILES_DIRS
 
 
 class Course(models.Model):
@@ -15,7 +17,8 @@ class Course(models.Model):
     title = models.TextField()
     description = models.TextField()
     duration = models.IntegerField()
-    thumbnail = models.FileField(upload_to='thumbnails/', blank=True, null=True)
+    thumbnail = models.FileField(upload_to=os.path.join(STATICFILES_DIRS[0], 'img/thumbnails/'),
+                                 blank=True, null=True)
 
     @property
     def topic_max_points(self) -> float:
@@ -106,10 +109,11 @@ class Type(models.TextChoices):
 THEORY_TYPES = [
     Type.MULTIPLE_CHOICE_RADIO,
     Type.MULTIPLE_CHOICE_CHECKBOX,
+    Type.FILL_IN_SINGLE_BLANK,
 ]
 
 PRACTICE_TYPES = [
-    Type.FILL_IN_SINGLE_BLANK,
+    Type.CODE,
 ]
 
 

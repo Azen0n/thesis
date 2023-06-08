@@ -15,6 +15,9 @@ def get_env_variable(name: str):
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = get_env_variable('SECRET_KEY')
+SANDBOX_API_URL = get_env_variable('SANDBOX_API_URL')
+SANDBOX_API_HEADER = get_env_variable('SANDBOX_API_HEADER')
+SANDBOX_API_TOKEN = get_env_variable('SANDBOX_API_TOKEN')
 
 DEBUG = get_env_variable('DEBUG') == 'True'
 
@@ -66,6 +69,8 @@ class Constants:
     JOIN_CODE_CHARACTERS: str = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789'
     JOIN_CODE_LENGTH: int = 5
 
+    MAX_NUMBER_OF_ATTEMPTS_PER_PRACTICE_PROBLEM: int = 2
+
 
 # Application definition
 
@@ -99,7 +104,7 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
             os.path.join(BASE_DIR, 'templates')
-            ],
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -114,7 +119,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
@@ -128,7 +132,6 @@ DATABASES = {
         'PORT': get_env_variable('POSTGRES_PORT'),
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
@@ -148,7 +151,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.1/topics/i18n/
 
@@ -160,7 +162,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
@@ -170,7 +171,34 @@ STATICFILES_DIRS = [
     'static/'
 ]
 
+STATIC_ROOT = '/var/www/als/static/'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'django.log',
+            'formatter': 'verbose'
+        },
+    },
+    'root': {
+        'handlers': ['file'],
+        'level': 'DEBUG',
+    },
+}

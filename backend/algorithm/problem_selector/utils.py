@@ -101,7 +101,7 @@ def filter_problems_with_suitable_difficulty(problems: QuerySet[Problem],
         if progress is None:
             continue
         difficulty = get_suitable_problem_difficulty(progress.skill_level)
-        if problem.difficulty == difficulty.value:
+        if problem.difficulty <= difficulty.value:
             appropriate_problem_ids.append(problem.id)
     return Problem.objects.filter(id__in=appropriate_problem_ids)
 
@@ -137,7 +137,8 @@ def get_last_practice_user_answers(user: User, semester: Semester) -> QuerySet[U
     return UserAnswer.objects.filter(
         user=user,
         semester=semester,
-        problem__type__in=PRACTICE_TYPES
+        problem__type__in=PRACTICE_TYPES,
+        is_solved__isnull=False
     ).order_by('-created_at')
 
 
@@ -146,7 +147,8 @@ def get_last_theory_user_answers(user: User, topic: Topic) -> QuerySet[UserAnswe
     return UserAnswer.objects.filter(
         user=user,
         problem__main_topic=topic,
-        problem__type__in=THEORY_TYPES
+        problem__type__in=THEORY_TYPES,
+        is_solved__isnull=False
     ).order_by('-created_at')
 
 

@@ -1,17 +1,21 @@
 import json
+import logging
 from uuid import UUID
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import render
 from django.utils import timezone
 
-from algorithm.models import Progress
-from algorithm.utils import create_user_progress_if_not_exists
+from algorithm.models import Progress, UserWeakestLinkState, WeakestLinkState, WeakestLinkTopic, WeakestLinkProblem
+from algorithm.problem_selector.weakest_link import update_user_weakest_link_state
+from algorithm.utils import create_user_progress_if_not_exists, skip_problem
 from algorithm.problem_selector import (next_theory_problem as get_next_theory_problem,
                                         next_practice_problem as get_next_practice_problem)
-from courses.models import Semester, SemesterCode
+from courses.models import Semester, SemesterCode, Problem
 from answers.utils import get_answer_safe_data
+
+logger = logging.getLogger(__name__)
 
 
 def enroll_semester(request: HttpRequest, pk: UUID) -> HttpResponse:
@@ -30,6 +34,8 @@ def enroll_semester(request: HttpRequest, pk: UUID) -> HttpResponse:
             return JsonResponse(json.dumps({'error': 'Срок действия кода истек.'}), safe=False)
         semester.students.add(request.user)
         create_user_progress_if_not_exists(semester, request.user)
+    logger.info(f'(   ) {request.user.username:<10} [студент записан на курс '
+                 f'{semester.course.title}]')
     return JsonResponse(json.dumps({'status': '200'}), safe=False)
 
 
@@ -49,6 +55,8 @@ def next_theory_problem(request: HttpRequest,
             'problem': problem,
             'answer': json.dumps(answer),
             'type': 'theory',
+            'is_practice_problem': False,
+            'is_adaptive': True,
         }
         return render(request, 'problem.html', context)
     except ObjectDoesNotExist:
@@ -59,7 +67,7 @@ def next_theory_problem(request: HttpRequest,
 
 def next_practice_problem(request: HttpRequest,
                           semester_pk: UUID) -> HttpResponse:
-    """Подбирает следующее теоретическое задание по теме."""
+    """Подбирает следующее практическое задание по теме."""
     if not request.user.is_authenticated:
         return render(request, 'error.html', {'message': 'Войдите в систему.'}, status=401)
     try:
@@ -71,9 +79,42 @@ def next_practice_problem(request: HttpRequest,
             'problem': problem,
             'answer': json.dumps(answer),
             'type': 'practice',
+            'is_practice_problem': True,
+            'is_adaptive': True,
         }
         return render(request, 'problem.html', context)
     except ObjectDoesNotExist:
         return render(request, 'error.html', {'message': 'Страница не найдена.'}, status=404)
     except NotImplementedError as e:
         return render(request, 'error.html', {'message': f'{e}'})
+
+
+def skip_theory_problem(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -> HttpResponse:
+    """Пропускает теоретическое задание и подбирает следующее. Пропуском считается
+    ответ на задание, в котором значение ответа равно null.
+    """
+    if not request.user.is_authenticated:
+        return render(request, 'error.html', {'message': 'Войдите в систему.'}, status=401)
+    semester = Semester.objects.get(pk=semester_pk)
+    problem = Problem.objects.get(pk=problem_pk)
+    skip_problem(request.user, semester, problem)
+    logger.info(f'(   ) {request.user.username:<10} [задание {problem.title} пропущено]')
+    return next_theory_problem(request, semester_pk, problem.main_topic.pk)
+
+
+def skip_practice_problem(request: HttpRequest, semester_pk: UUID, problem_pk: UUID) -> HttpResponse:
+    """Пропускает практическое задание и подбирает следующее. Пропуском считается
+    ответ на задание, в котором значение ответа равно null.
+    """
+    if not request.user.is_authenticated:
+        return render(request, 'error.html', {'message': 'Войдите в систему.'}, status=401)
+    semester = Semester.objects.get(pk=semester_pk)
+    problem = Problem.objects.get(pk=problem_pk)
+    skip_problem(request.user, semester, problem)
+    logger.info(f'(   ) {request.user.username:<10} [задание {problem.title} пропущено]')
+    user_weakest_link_state = UserWeakestLinkState.objects.get(user=request.user, semester=semester).state
+    if user_weakest_link_state == WeakestLinkState.IN_PROGRESS:
+        WeakestLinkTopic.objects.filter(user=request.user, semester=semester).delete()
+        WeakestLinkProblem.objects.filter(user=request.user, semester=semester).delete()
+        update_user_weakest_link_state(request.user, semester, WeakestLinkState.NONE)
+    return next_practice_problem(request, semester_pk)

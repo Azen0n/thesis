@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import QuerySet
@@ -7,10 +9,12 @@ from algorithm.problem_selector.utils import get_last_theory_user_answers
 from algorithm.problem_selector.weakest_link import (check_weakest_link,
                                                      start_weakest_link_when_ready,
                                                      stop_weakest_link_when_practice_completed)
+from algorithm.utils import format_log_problem
 from config.settings import Constants
-from .models import Answer, MultipleChoiceRadio, MultipleChoiceCheckbox
+from .models import Answer, CodeAnswer
 from courses.models import Problem, Semester, PRACTICE_TYPES, Type, THEORY_TYPES, Difficulty
 from .points_management import add_points_for_problem, add_placement_points_for_problem
+from .utils import GivenAnswer
 
 DIFFICULTY_COEFFICIENT = {
     Difficulty.EASY.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_EASY,
@@ -18,10 +22,12 @@ DIFFICULTY_COEFFICIENT = {
     Difficulty.HARD.value: Constants.ALGORITHM_CORRECT_ANSWER_BONUS_HARD,
 }
 
+logger = logging.getLogger(__name__)
+
 
 @transaction.atomic
 def create_user_answer(user: User, semester: Semester, problem: Problem,
-                       coefficient: float, answer: MultipleChoiceRadio | list[MultipleChoiceCheckbox] | str):
+                       coefficient: float, answer: GivenAnswer, time_elapsed_in_seconds: float | None):
     """Создает ответ пользователя на задание и добавляет баллы в его
     главную тему и подтемы.
     """
@@ -34,14 +40,16 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
         semester=semester,
         problem=problem,
         is_solved=is_solved,
-        coefficient=coefficient
+        coefficient=coefficient,
+        time_elapsed_in_seconds=time_elapsed_in_seconds
     )
-    create_entered_user_answers(problem.type, answer, user_answer)
+    create_given_user_answers(problem.type, answer, user_answer)
     progress = Progress.objects.filter(
         user=user,
         semester=semester,
         topic=problem.main_topic
     ).first()
+    points = (progress.theory_points, progress.practice_points, progress.skill_level)
     if problem.type in THEORY_TYPES:
         last_answers = get_last_theory_user_answers(user, problem.main_topic)
         if len(last_answers) <= Constants.ALGORITHM_SKILL_LEVEL_PLACEMENT_ANSWERS:
@@ -54,15 +62,23 @@ def create_user_answer(user: User, semester: Semester, problem: Problem,
     change_user_skill_level(progress, user_answer)
     if is_solved:
         add_points_for_problem(user, semester, problem, coefficient)
+    progress.refresh_from_db()
+    new_points = (progress.theory_points, progress.practice_points, progress.skill_level)
+    delta = [new_points[i] - points[i] for i in range(3)]
+    points_info = ' / '.join(f'{new_points[i]:.2f} ({"+" if delta[i] >= 0 else ""}{delta[i]})'
+                             for i in range(3))
+    logger.info(f'(   ) {format_log_problem(user, problem)}'
+                f' [ответ принят] is_solved {is_solved} time {time_elapsed_in_seconds}'
+                f' {points_info}')
     user_weakest_link_state = UserWeakestLinkState.objects.get(user=user, semester=semester)
     if user_weakest_link_state.state == WeakestLinkState.NONE and not is_weakest_link_done:
         start_weakest_link_when_ready(user, semester)
     stop_weakest_link_when_practice_completed(user, semester)
 
 
-def create_entered_user_answers(problem_type: str,
-                                answer: MultipleChoiceRadio | list[MultipleChoiceCheckbox] | str,
-                                user_answer: UserAnswer):
+def create_given_user_answers(problem_type: str,
+                              answer: GivenAnswer,
+                              user_answer: UserAnswer):
     """Создает список Answer с выбранными/введенными ответами пользователя."""
     match problem_type:
         case Type.MULTIPLE_CHOICE_RADIO.value:
@@ -73,7 +89,12 @@ def create_entered_user_answers(problem_type: str,
         case Type.FILL_IN_SINGLE_BLANK.value:
             Answer.objects.create(fill_in_single_blank=answer, user_answer=user_answer)
         case Type.CODE.value:
-            raise NotImplementedError('Проверки практических заданий нет.')
+            code_answer = CodeAnswer.objects.create(
+                code=user_answer.problem.code_set.first(),
+                user_code=answer[0],
+                tests_result=answer[1]
+            )
+            Answer.objects.create(code_answer=code_answer, user_answer=user_answer)
         case other_type:
             raise ValueError(f'Неизвестный тип {other_type}.')
 

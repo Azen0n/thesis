@@ -1,10 +1,30 @@
 {% extends 'base.html' %}
 {% block content %}
-    <h3>Регистрация</h3>
-    <form action="" method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Создать</button>
-        <p>Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
-    </form>
+    <div class="container white_block">
+        <form action="" method="POST" class="p-3">
+            <h3 class="mb-2">Регистрация</h3>
+            {% csrf_token %}
+            <div class="mb-1">
+                <label class="form-label">Имя пользователя
+                    {{ form.username }}
+                </label>
+            </div>
+            <div class="mb-1">
+                <label class="form-label">Пароль
+                    {{ form.password1 }}
+                </label>
+            </div>
+            <div class="mb-1">
+                <label class="form-label">Подтвердите пароль
+                    {{ form.password2 }}
+                </label>
+            </div>
+            <button class="btn btn-primary mb-1" type="submit">Зарегистрироваться</button>
+            <div>
+                <p>Уже есть аккаунт?
+                    <a style="color: #0d6efd; text-decoration: underline;" href="{% url 'login' %}"> Войти</a>
+                </p>
+            </div>
+        </form>
+    </div>
 {% endblock %}

@@ -3,20 +3,26 @@
     Вход
 {% endblock %}
 {% block content %}
-    <h3>Вход</h3>
-    <form action="" method="POST">
-        {% csrf_token %}
-        <p>
-            <label>Username:
-                <input type="text" name="username" required>
-            </label>
-        </p>
-        <p>
-            <label>Password:
-                <input type="password" name="password" required>
-            </label>
-        </p>
-        <button type="submit">Войти</button>
-        <p>Нет аккаунта? <a href="{% url 'register' %}">Регистрация</a></p>
-    </form>
+    <div class="container white_block">
+        <form action="" method="POST" class="p-3">
+            <h3 class="mb-2">Вход</h3>
+            {% csrf_token %}
+            <div class="mb-1">
+                <label class="form-label">Имя пользователя
+                    <input class="form-control" type="text" name="username" required>
+                </label>
+            </div>
+            <div class="mb-1">
+                <label class="form-label">Пароль
+                    <input class="form-control" type="password" name="password" required>
+                </label>
+            </div>
+            <button class="btn btn-primary mb-1" type="submit">Войти</button>
+            <div>
+                <p>Нет аккаунта?
+                    <a style="color: #0d6efd; text-decoration: underline;" href="{% url 'register' %}"> Регистрация</a>
+                </p>
+            </div>
+        </form>
+    </div>
 {% endblock %}
