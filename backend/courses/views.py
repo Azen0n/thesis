@@ -63,22 +63,25 @@ class TopicView(View):
         if not is_parent_topic_theory_low_reached(request.user, semester, topic):
             return render(request, 'error.html', {'message': f'Необходимо завершить тест по предыдущей теме.'},
                           status=401)
-        progress = Progress.objects.get(semester=semester, user=request.user, topic=topic)
         theory_problems = Problem.objects.filter(main_topic=topic, type__in=THEORY_TYPES)
         practice_problems = Problem.objects.filter(main_topic=topic, type__in=PRACTICE_TYPES)
-        total_points = progress.theory_points + progress.practice_points
-        max_points = Constants.TOPIC_THEORY_MAX_POINTS + Constants.TOPIC_PRACTICE_MAX_POINTS
         context = {
             'is_teacher': is_teacher,
             'semester': semester,
             'topic': topic,
             'theory_problems': theory_problems,
             'practice_problems': practice_problems,
-            'theory_points': progress.theory_points,
-            'practice_points': progress.practice_points,
-            'total_points': total_points,
-            'progress_percent': int(total_points / max_points * 100)
         }
+        if not is_teacher:
+            progress = Progress.objects.get(semester=semester, user=request.user, topic=topic)
+            total_points = progress.theory_points + progress.practice_points
+            max_points = Constants.TOPIC_THEORY_MAX_POINTS + Constants.TOPIC_PRACTICE_MAX_POINTS
+            context.update({
+                'theory_points': progress.theory_points,
+                'practice_points': progress.practice_points,
+                'total_points': total_points,
+                'progress_percent': int(total_points / max_points * 100),
+            })
         return render(request, 'topic.html', context)
 
 
@@ -94,23 +97,26 @@ class ProblemView(View):
             return render(request, 'error.html', {'message': 'Запишитесь на курс, чтобы просматривать задания.'})
         problem = Problem.objects.get(pk=pk)
         answer = get_answer_safe_data(problem)
-        progress = Progress.objects.get(user=request.user, semester=semester, topic=problem.main_topic)
-        if problem.type in PRACTICE_TYPES and not progress.is_theory_low_reached():
-            return render(request, 'error.html', {'message': 'Тест по теории не завершен.'})
-        is_answered = UserAnswer.objects.filter(user=request.user, semester=semester, problem=problem).exists()
-        is_topic_completed = is_problem_topic_completed(request.user, semester, problem)
-        test_example = get_first_test(problem)
         context = {
             'is_teacher': is_teacher,
             'semester': semester,
             'problem': problem,
-            'is_answered': is_answered,
             'is_practice_problem': problem.type in PRACTICE_TYPES,
             'answer': json.dumps(answer),
-            'is_topic_completed': is_topic_completed,
             'correct_answers': json.dumps(get_correct_answers(problem.id)),
-            'test_example': test_example,
         }
+        if not is_teacher:
+            progress = Progress.objects.get(user=request.user, semester=semester, topic=problem.main_topic)
+            if problem.type in PRACTICE_TYPES and not progress.is_theory_low_reached():
+                return render(request, 'error.html', {'message': 'Тест по теории не завершен.'})
+            is_answered = UserAnswer.objects.filter(user=request.user, semester=semester, problem=problem).exists()
+            is_topic_completed = is_problem_topic_completed(request.user, semester, problem)
+            test_example = get_first_test(problem)
+            context.update({
+                'is_answered': is_answered,
+                'is_topic_completed': is_topic_completed,
+                'test_example': test_example,
+            })
         return render(request, 'problem.html', context)
 
 

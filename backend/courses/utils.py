@@ -67,14 +67,19 @@ def get_annotated_semester_topics(user: User, semester: Semester) -> QuerySet[To
     """Добавляет поля points, theory_points и practice_points
     текущего пользователя к каждой теме.
     """
-    topics = Topic.objects.filter(
-        progress__semester=semester,
-        progress__user=user
-    ).annotate(
-        points=F('progress__theory_points') + F('progress__practice_points'),
-        theory_points=F('progress__theory_points'),
-        practice_points=F('progress__practice_points')
-    ).order_by('module__created_at', 'created_at')
+    if user not in semester.teachers.all():
+        topics = Topic.objects.filter(
+            progress__semester=semester,
+            progress__user=user
+        ).annotate(
+            points=F('progress__theory_points') + F('progress__practice_points'),
+            theory_points=F('progress__theory_points'),
+            practice_points=F('progress__practice_points')
+        ).order_by('module__created_at', 'created_at')
+    else:
+        topics = Topic.objects.filter(
+            progress__semester=semester
+        ).distinct().order_by('module__created_at', 'created_at')
     return topics
 
 
