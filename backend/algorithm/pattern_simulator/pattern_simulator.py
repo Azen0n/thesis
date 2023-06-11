@@ -141,7 +141,7 @@ class PatternSimulator:
                 value = solve_fill_in_single_blank(problem, is_solved)
                 body = {'value': value, 'problem_id': str(problem.id), 'type': problem.type}
             case _:
-                raise NotImplementedError(f'Проверка типа задания "{problem.type}" недоступна.')
+                raise ValueError(f'Проверка типа задания "{problem.type}" недоступна.')
         request = self.create_validate_problem_request(problem, body)
         validate_answer(request, self.semester.pk, problem.pk)
 

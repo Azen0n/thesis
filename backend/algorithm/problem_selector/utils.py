@@ -44,8 +44,7 @@ def filter_practice_problems(user: User, semester: Semester,
     """
     available_progresses = get_available_progresses(user, semester)
     if not available_progresses:
-        raise NotImplementedError('Необходимо завершить тест'
-                                  ' по теории хотя бы по одной теме.')
+        raise ValueError('Необходимо завершить тест по теории хотя бы по одной теме.')
     not_completed_topics_ids = Progress.objects.filter(
         user=user,
         semester=semester

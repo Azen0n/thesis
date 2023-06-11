@@ -35,7 +35,7 @@ def enroll_semester(request: HttpRequest, pk: UUID) -> HttpResponse:
         semester.students.add(request.user)
         create_user_progress_if_not_exists(semester, request.user)
     logger.info(f'(   ) {request.user.username:<10} [студент записан на курс '
-                 f'{semester.course.title}]')
+                f'{semester.course.title}]')
     return JsonResponse(json.dumps({'status': '200'}), safe=False)
 
 
@@ -61,7 +61,7 @@ def next_theory_problem(request: HttpRequest,
         return render(request, 'problem.html', context)
     except ObjectDoesNotExist:
         return render(request, 'error.html', {'message': 'Страница не найдена.'}, status=404)
-    except NotImplementedError as e:
+    except ValueError as e:
         return render(request, 'error.html', {'message': f'{e}'})
 
 
@@ -85,7 +85,7 @@ def next_practice_problem(request: HttpRequest,
         return render(request, 'problem.html', context)
     except ObjectDoesNotExist:
         return render(request, 'error.html', {'message': 'Страница не найдена.'}, status=404)
-    except NotImplementedError as e:
+    except ValueError as e:
         return render(request, 'error.html', {'message': f'{e}'})
 
 
